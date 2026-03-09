@@ -9,6 +9,7 @@ import {
   CalendarDays,
   FileText,
   Wallet,
+  BarChart3,
 } from 'lucide-react'
 
 const navItems = [
@@ -18,6 +19,7 @@ const navItems = [
   { href: '/takvim', icon: CalendarDays, label: 'Takvim' },
   { href: '/notlar', icon: FileText, label: 'Notlar' },
   { href: '/alacaklar', icon: Wallet, label: 'Alacaklar' },
+  { href: '/raporlar', icon: BarChart3, label: 'Raporlar' },
 ]
 
 export default function BottomNav() {

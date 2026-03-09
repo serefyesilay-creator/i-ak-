@@ -81,20 +81,33 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
   }) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    const parsedAmount = parseFloat(form.amount.replace(',', '.'))
+    if (isNaN(parsedAmount)) {
+      toast.error('Geçersiz tutar')
+      return
+    }
+
     const { data, error } = await supabase
       .from('invoices')
       .insert({
         user_id: user.id,
         client_id: clientId,
         service_name: form.service_name,
-        amount: parseFloat(form.amount),
+        amount: parsedAmount,
         currency: form.currency,
         status: 'unpaid',
         due_date: form.due_date || null,
         notes: form.notes || null,
       })
       .select().single()
-    if (error) { toast.error('Eklenemedi'); return }
+
+    if (error) {
+      toast.error('Eklenemedi: ' + error.message)
+      console.error('Insert Error:', error)
+      return
+    }
+
     setInvoices(prev => [data, ...prev])
     toast.success('Fatura eklendi')
     setShowInvoiceModal(null)
@@ -377,7 +390,7 @@ function InvoiceModal({ clientId, clientName, defaultMonth, onClose, onAdd }: {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={ls}>Tutar *</label>
-              <input type="number" className="input" placeholder="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} min="0" step="0.01" />
+              <input type="text" inputMode="decimal" className="input" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
             </div>
             <div>
               <label style={ls}>Para Birimi</label>
