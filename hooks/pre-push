@@ -1,0 +1,209 @@
+#!/usr/bin/env zsh
+# ============================================================
+# pre-push hook — Push öncesi kapsamlı kontrol
+# Kurulum: ./hooks/install.sh
+# ============================================================
+
+export PATH="/Users/seref/pinokio/bin/miniconda/bin:$PATH"
+
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [[ "$HOOKS_DIR" == *"/hooks" ]]; then
+  PROJECT_DIR="$(cd "$HOOKS_DIR/.." && pwd)"
+else
+  PROJECT_DIR="$(git rev-parse --show-toplevel)"
+  HOOKS_DIR="$PROJECT_DIR/hooks"
+fi
+
+CREDS_FILE="$HOOKS_DIR/credentials.env"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+FAILED=0
+CREDS_LOADED=0
+
+# ── Credentials yükle ───────────────────────────────────────
+restore_env() {
+  if [[ "$CREDS_LOADED" == "1" && -f "$PROJECT_DIR/.env.local.bak" ]]; then
+    mv "$PROJECT_DIR/.env.local.bak" "$PROJECT_DIR/.env.local"
+  fi
+}
+trap restore_env EXIT
+
+load_credentials() {
+  if [[ -f "$CREDS_FILE" ]]; then
+    while IFS='=' read -r key value; do
+      [[ "$key" =~ ^#.*$ ]] && continue
+      [[ -z "$key" ]] && continue
+      [[ "$value" == *"your_"* ]] && continue
+      value="${value%\"}"
+      value="${value#\"}"
+      export "$key=$value"
+    done < "$CREDS_FILE"
+
+    if [[ -n "$NEXT_PUBLIC_SUPABASE_URL" && "$NEXT_PUBLIC_SUPABASE_URL" != *"your_"* ]]; then
+      cp "$PROJECT_DIR/.env.local" "$PROJECT_DIR/.env.local.bak" 2>/dev/null || true
+      cat > "$PROJECT_DIR/.env.local" <<EOF
+NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+EOF
+      CREDS_LOADED=1
+    fi
+  fi
+}
+
+echo ""
+echo -e "${BOLD}${CYAN}╔════════════════════════════════════╗${NC}"
+echo -e "${BOLD}${CYAN}║  Pre-Push Kontrolü                 ║${NC}"
+echo -e "${BOLD}${CYAN}║  Branch: $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')$(printf '%*s' $((26 - ${#$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')})) '')║${NC}"
+echo -e "${BOLD}${CYAN}╚════════════════════════════════════╝${NC}"
+
+cd "$PROJECT_DIR"
+load_credentials
+
+# ── 1. Branch güvenliği ─────────────────────────────────────
+echo -e "\n${BOLD}▶ Branch Güvenliği${NC}"
+
+current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [[ "$current_branch" == "main" || "$current_branch" == "master" ]]; then
+  echo -e "  ${YELLOW}⚠ Doğrudan main/master'a push!${NC}"
+  echo -e "  ${YELLOW}  Devam etmek istiyor musunuz? (y/N)${NC}"
+  read -r -n 1 response
+  echo ""
+  if [[ "$response" != "y" && "$response" != "Y" ]]; then
+    echo -e "  ${YELLOW}Push iptal edildi.${NC}"
+    exit 1
+  fi
+else
+  echo -e "  ${GREEN}✓ Branch: $current_branch${NC}"
+fi
+
+# ── 2. TypeScript tam kontrol ───────────────────────────────
+echo -e "\n${BOLD}▶ TypeScript Tam Kontrol${NC}"
+
+if npx tsc --noEmit 2>/tmp/push_ts; then
+  echo -e "  ${GREEN}✓ TypeScript — hata yok${NC}"
+else
+  echo -e "  ${RED}✗ TypeScript hataları:${NC}"
+  cat /tmp/push_ts | while IFS= read -r line; do
+    echo -e "    ${RED}$line${NC}"
+  done
+  FAILED=1
+fi
+
+# ── 3. ESLint ───────────────────────────────────────────────
+echo -e "\n${BOLD}▶ ESLint Kontrolü${NC}"
+
+if npx next lint --quiet 2>/tmp/push_lint; then
+  echo -e "  ${GREEN}✓ ESLint — hata yok${NC}"
+else
+  echo -e "  ${RED}✗ ESLint hataları:${NC}"
+  cat /tmp/push_lint | while IFS= read -r line; do
+    echo -e "    ${RED}$line${NC}"
+  done
+  FAILED=1
+fi
+
+# ── 4. Production Build ─────────────────────────────────────
+echo -e "\n${BOLD}▶ Production Build Kontrolü${NC}"
+echo -e "  ${CYAN}→ Bu işlem 30-60 saniye sürebilir...${NC}"
+
+if npm run build 2>/tmp/push_build; then
+  echo -e "  ${GREEN}✓ Build başarılı${NC}"
+  # Rota özeti
+  echo -e "  ${CYAN}  Rotalar:${NC}"
+  grep -E "^[├└]" /tmp/push_build 2>/dev/null | while IFS= read -r line; do
+    echo -e "    $line"
+  done
+else
+  echo -e "  ${RED}✗ Build başarısız!${NC}"
+  grep -E "error|Error|Failed|Type error" /tmp/push_build 2>/dev/null | while IFS= read -r line; do
+    echo -e "    ${RED}$line${NC}"
+  done
+  FAILED=1
+fi
+
+# ── 5. Next.js 16 Uyumluluk ─────────────────────────────────
+echo -e "\n${BOLD}▶ Next.js 16 Uyumluluk Kontrolü${NC}"
+
+if [[ -f "$PROJECT_DIR/src/middleware.ts" ]]; then
+  echo -e "  ${RED}✗ src/middleware.ts bulundu — Next.js 16'da proxy.ts kullanılmalı${NC}"
+  FAILED=1
+else
+  echo -e "  ${GREEN}✓ middleware.ts yok, proxy.ts convention aktif${NC}"
+fi
+
+# Supabase kullanan server sayfalarda force-dynamic kontrolü
+missing=()
+while IFS= read -r -d '' file; do
+  grep -q "^'use client'" "$file" && continue
+  grep -q "createClient\|supabase" "$file" 2>/dev/null || continue
+  grep -q "force-dynamic" "$file" || missing+=("${file#$PROJECT_DIR/}")
+done < <(find "$PROJECT_DIR/src/app" -name "page.tsx" -print0 2>/dev/null)
+
+if [[ ${#missing[@]} -eq 0 ]]; then
+  echo -e "  ${GREEN}✓ Tüm server sayfalarında force-dynamic mevcut${NC}"
+else
+  for f in "${missing[@]}"; do
+    echo -e "  ${YELLOW}⚠ force-dynamic eksik: $f${NC}"
+  done
+fi
+
+# ── 6. Güvenlik Taraması ────────────────────────────────────
+echo -e "\n${BOLD}▶ Güvenlik Taraması${NC}"
+
+# Commit edilecek .env var mı?
+if git diff HEAD --name-only 2>/dev/null | grep -qE "\.env|credentials"; then
+  echo -e "  ${RED}✗ .env veya credentials dosyası commit edilmiş!${NC}"
+  FAILED=1
+else
+  echo -e "  ${GREEN}✓ .env dosyaları commit'te yok${NC}"
+fi
+
+# Hardcoded credentials kontrolü
+if grep -r "SUPABASE_KEY\|service_role\|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" \
+     "$PROJECT_DIR/src" --include="*.ts" --include="*.tsx" -l 2>/dev/null | grep -qv ".env"; then
+  echo -e "  ${RED}✗ Kaynak kodda hardcoded JWT token olabilir!${NC}"
+  FAILED=1
+else
+  echo -e "  ${GREEN}✓ Hardcoded token yok${NC}"
+fi
+
+# ── 7. Supabase Bağlantı Testi ──────────────────────────────
+echo -e "\n${BOLD}▶ Supabase Bağlantı Testi${NC}"
+
+if [[ -n "$NEXT_PUBLIC_SUPABASE_URL" && "$NEXT_PUBLIC_SUPABASE_URL" != *"your_"* ]]; then
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+    -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+    "${NEXT_PUBLIC_SUPABASE_URL}/rest/v1/" 2>/dev/null || echo "000")
+
+  case "$http_code" in
+    200|401) echo -e "  ${GREEN}✓ Supabase erişilebilir (HTTP $http_code)${NC}" ;;
+    000)     echo -e "  ${YELLOW}⚠ Supabase'e ulaşılamadı${NC}" ;;
+    *)       echo -e "  ${YELLOW}⚠ Supabase HTTP $http_code${NC}" ;;
+  esac
+else
+  echo -e "  ${YELLOW}⚠ Credentials yüklenmedi — test atlandı${NC}"
+fi
+
+# ── Özet ────────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}══════════════════════════════════════${NC}"
+if [[ $FAILED -eq 0 ]]; then
+  echo -e "${GREEN}${BOLD}✅  Push onaylandı! Yükleniyor...${NC}"
+  echo -e "${BOLD}══════════════════════════════════════${NC}"
+  echo ""
+  exit 0
+else
+  echo -e "${RED}${BOLD}❌  Push engellendi — hataları düzeltin${NC}"
+  echo -e "${BOLD}══════════════════════════════════════${NC}"
+  echo ""
+  echo -e "${YELLOW}Push'u zorla yapmak için: git push --no-verify${NC}"
+  echo ""
+  exit 1
+fi

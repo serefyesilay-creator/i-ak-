@@ -1,0 +1,127 @@
+#!/usr/bin/env zsh
+# ============================================================
+# pre-commit hook — Commit öncesi hızlı kontrol
+# Kurulum: ./hooks/install.sh
+# ============================================================
+
+export PATH="/Users/seref/pinokio/bin/miniconda/bin:$PATH"
+
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Hooks klasörü içindeyse (doğrudan çağrı), git root'u bul
+if [[ "$HOOKS_DIR" == *"/hooks" ]]; then
+  PROJECT_DIR="$(cd "$HOOKS_DIR/.." && pwd)"
+else
+  # .git/hooks'tan çalışıyorsa
+  PROJECT_DIR="$(git rev-parse --show-toplevel)"
+  HOOKS_DIR="$PROJECT_DIR/hooks"
+fi
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+echo ""
+echo -e "${BOLD}${CYAN}╔══════════════════════════════════╗${NC}"
+echo -e "${BOLD}${CYAN}║  Pre-Commit Kontrolü             ║${NC}"
+echo -e "${BOLD}${CYAN}╚══════════════════════════════════╝${NC}"
+
+FAILED=0
+
+cd "$PROJECT_DIR"
+
+# ── 1. Staged dosya kontrolü ────────────────────────────────
+echo -e "\n${BOLD}▶ Staged Dosya Güvenliği${NC}"
+
+# .env ve credentials commit edilmesin
+staged_danger=$(git diff --cached --name-only | grep -E "\.env|credentials\.env|\.env\.local|\.env\.production" || true)
+if [[ -n "$staged_danger" ]]; then
+  echo -e "  ${RED}✗ Tehlikeli dosyalar staged!${NC}"
+  echo "$staged_danger" | while read -r f; do
+    echo -e "    ${RED}→ $f${NC}"
+  done
+  echo -e "  ${YELLOW}  'git reset HEAD <dosya>' ile unstage edin${NC}"
+  FAILED=1
+else
+  echo -e "  ${GREEN}✓ Güvenli — .env dosyası staged değil${NC}"
+fi
+
+# ── 2. console.log kontrolü ─────────────────────────────────
+echo -e "\n${BOLD}▶ Debug Kodu Kontrolü${NC}"
+
+console_files=$(git diff --cached --name-only | grep -E "\.(ts|tsx)$" | xargs grep -l "console\.log" 2>/dev/null || true)
+if [[ -n "$console_files" ]]; then
+  echo -e "  ${YELLOW}⚠ console.log içeren staged dosyalar:${NC}"
+  echo "$console_files" | while read -r f; do
+    echo -e "    ${YELLOW}→ $f${NC}"
+  done
+  echo -e "  ${YELLOW}  (uyarı — commit engellenmez)${NC}"
+else
+  echo -e "  ${GREEN}✓ console.log yok${NC}"
+fi
+
+# ── 3. TypeScript hata kontrolü (sadece staged dosyalar) ────
+echo -e "\n${BOLD}▶ TypeScript Kontrolü${NC}"
+
+staged_ts=$(git diff --cached --name-only | grep -E "\.(ts|tsx)$" || true)
+if [[ -n "$staged_ts" ]]; then
+  if npx tsc --noEmit 2>/tmp/pre_commit_ts; then
+    echo -e "  ${GREEN}✓ TypeScript — hata yok${NC}"
+  else
+    echo -e "  ${RED}✗ TypeScript hataları:${NC}"
+    cat /tmp/pre_commit_ts | while IFS= read -r line; do
+      echo -e "    ${RED}$line${NC}"
+    done
+    FAILED=1
+  fi
+else
+  echo -e "  ${CYAN}→ TypeScript dosyası staged değil, atlandı${NC}"
+fi
+
+# ── 4. Next.js 16 Uyumluluk ─────────────────────────────────
+echo -e "\n${BOLD}▶ Next.js 16 Uyumluluk${NC}"
+
+staged_files=$(git diff --cached --name-only || true)
+
+# middleware.ts staged mi?
+if echo "$staged_files" | grep -q "middleware\.ts"; then
+  echo -e "  ${RED}✗ middleware.ts commit edilmek üzere! Next.js 16'da proxy.ts kullanın.${NC}"
+  FAILED=1
+else
+  echo -e "  ${GREEN}✓ middleware.ts yok${NC}"
+fi
+
+# Supabase kullanan server component'lerde force-dynamic var mı?
+missing_dynamic=""
+while IFS= read -r f; do
+  [[ -z "$f" ]] && continue
+  [[ ! -f "$f" ]] && continue
+  [[ "$f" != src/app/* ]] && continue
+  grep -q "^'use client'" "$f" && continue
+  grep -q "createClient\|supabase" "$f" 2>/dev/null || continue
+  grep -q "force-dynamic" "$f" || missing_dynamic="$missing_dynamic\n    → $f"
+done <<< "$staged_ts"
+
+if [[ -n "$missing_dynamic" ]]; then
+  echo -e "  ${YELLOW}⚠ force-dynamic eksik olabilir:${NC}"
+  echo -e "$missing_dynamic"
+else
+  echo -e "  ${GREEN}✓ force-dynamic kontrolü OK${NC}"
+fi
+
+# ── Sonuç ───────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}══════════════════════════════════${NC}"
+if [[ $FAILED -eq 0 ]]; then
+  echo -e "${GREEN}${BOLD}✅  Commit onaylandı!${NC}"
+  echo -e "${BOLD}══════════════════════════════════${NC}"
+  exit 0
+else
+  echo -e "${RED}${BOLD}❌  Commit engellendi — hataları düzeltin${NC}"
+  echo -e "${BOLD}══════════════════════════════════${NC}"
+  echo ""
+  exit 1
+fi

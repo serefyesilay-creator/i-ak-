@@ -32,6 +32,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.env.local.bak
+
+# hooks credentials — asla commit etme!
+hooks/credentials.env
+
+# tmp build logs
+/tmp/tsc_output
+/tmp/eslint_output
+/tmp/build_output
 
 # vercel
 .vercel
