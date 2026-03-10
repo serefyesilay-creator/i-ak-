@@ -86,9 +86,9 @@ echo -e "\n${BOLD}▶ Next.js 16 Uyumluluk${NC}"
 
 staged_files=$(git diff --cached --name-only || true)
 
-# middleware.ts staged mi?
-if echo "$staged_files" | grep -q "middleware\.ts"; then
-  echo -e "  ${RED}✗ middleware.ts commit edilmek üzere! Next.js 16'da proxy.ts kullanın.${NC}"
+# Kök seviye middleware.ts staged mi? (src/lib/supabase/middleware.ts hariç)
+if echo "$staged_files" | grep -qE "^(src/)?middleware\.ts$"; then
+  echo -e "  ${RED}✗ Kök middleware.ts commit edilmek üzere! Next.js 16'da proxy.ts kullanın.${NC}"
   FAILED=1
 else
   echo -e "  ${GREEN}✓ middleware.ts yok${NC}"

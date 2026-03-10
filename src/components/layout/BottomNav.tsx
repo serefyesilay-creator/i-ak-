@@ -6,19 +6,19 @@ import {
   LayoutDashboard,
   CheckSquare,
   FolderKanban,
-  CalendarDays,
   FileText,
   Wallet,
   BarChart3,
+  TrendingDown,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Ana Sayfa' },
   { href: '/gorevler', icon: CheckSquare, label: 'Görevler' },
   { href: '/projeler', icon: FolderKanban, label: 'Projeler' },
-  { href: '/takvim', icon: CalendarDays, label: 'Takvim' },
   { href: '/notlar', icon: FileText, label: 'Notlar' },
   { href: '/alacaklar', icon: Wallet, label: 'Alacaklar' },
+  { href: '/giderler', icon: TrendingDown, label: 'Giderler' },
   { href: '/raporlar', icon: BarChart3, label: 'Raporlar' },
 ]
 

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRealtime } from '@/hooks/useRealtime'
 import toast from 'react-hot-toast'
 import { Plus, Filter, Search, X, CheckCircle2, Circle, Clock, Ban, Trash2, ArrowRight } from 'lucide-react'
 import { format } from 'date-fns'
@@ -48,7 +49,22 @@ export default function GorevlerClient({ initialTasks, projects }: Props) {
   const [recentlyDone, setRecentlyDone] = useState<Set<string>>(new Set())
   const [confirmAction, setConfirmAction] = useState<{ type: string; message: string } | null>(null)
   const [bulkMoveStatus, setBulkMoveStatus] = useState<string>('')
+  const [userId, setUserId] = useState<string>('')
   const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id)
+    })
+  }, [])
+
+  useRealtime<Task>({
+    table: 'tasks',
+    userId,
+    onInsert: (row) => setTasks(prev => prev.some(t => t.id === row.id) ? prev : [row, ...prev]),
+    onUpdate: (row) => setTasks(prev => prev.map(t => t.id === row.id ? row : t)),
+    onDelete: (id) => setTasks(prev => prev.filter(t => t.id !== id)),
+  })
 
   const filtered = useMemo(() => {
     return tasks.filter(t => {

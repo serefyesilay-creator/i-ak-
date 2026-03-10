@@ -10,11 +10,6 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/auth/login')
 
-  // Dashboard verileri paralel yükle
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const todayStr = today.toISOString()
-
   const [tasksRes, projectsRes, invoicesRes, notesRes] = await Promise.all([
     supabase
       .from('tasks')
@@ -42,58 +37,13 @@ export default async function DashboardPage() {
       .limit(5),
   ])
 
-  const tasks = tasksRes.data ?? []
-  const projects = projectsRes.data ?? []
-  const pendingInvoices = invoicesRes.data ?? []
-  const recentNotes = notesRes.data ?? []
-
-  // Bugünün görevleri
-  const todayTasks = tasks.filter(t => {
-    if (!t.due_date) return false
-    const d = new Date(t.due_date)
-    const todayDate = new Date()
-    return d.getFullYear() === todayDate.getFullYear() &&
-      d.getMonth() === todayDate.getMonth() &&
-      d.getDate() === todayDate.getDate()
-  })
-
-  // Gecikmiş görevler
-  const overdueTasks = tasks.filter(t => {
-    if (!t.due_date || t.status === 'done') return false
-    return new Date(t.due_date) < new Date(todayStr)
-  })
-
-  // Proje tamamlanma yüzdeleri
-  let projectsWithProgress = projects
-  if (projects.length > 0) {
-    const projectIds = projects.map(p => p.id)
-    const { data: allTasks } = await supabase
-      .from('tasks')
-      .select('project_id, status')
-      .eq('user_id', user.id)
-      .in('project_id', projectIds)
-
-    projectsWithProgress = projects.map(p => {
-      const pTasks = allTasks?.filter(t => t.project_id === p.id) ?? []
-      const done = pTasks.filter(t => t.status === 'done').length
-      const progress = pTasks.length > 0 ? Math.round((done / pTasks.length) * 100) : 0
-      return { ...p, progress, taskCount: pTasks.length }
-    })
-  }
-
-  // Alacak özeti
-  const invoiceSummary = { TRY: 0, USD: 0, EUR: 0 }
-  pendingInvoices.forEach(inv => {
-    invoiceSummary[inv.currency as keyof typeof invoiceSummary] += Number(inv.amount)
-  })
-
   return (
     <DashboardClient
-      todayTasks={todayTasks}
-      overdueTasks={overdueTasks}
-      activeProjects={projectsWithProgress}
-      invoiceSummary={invoiceSummary}
-      recentNotes={recentNotes}
+      userId={user.id}
+      allTasks={tasksRes.data ?? []}
+      activeProjects={projectsRes.data ?? []}
+      pendingInvoices={invoicesRes.data ?? []}
+      recentNotes={notesRes.data ?? []}
     />
   )
 }

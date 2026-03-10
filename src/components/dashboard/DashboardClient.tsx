@@ -1,23 +1,21 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import {
-  CheckSquare,
   AlertTriangle,
-  FolderKanban,
-  Wallet,
-  FileText,
   ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { Task, Project, Note } from '@/types'
+import type { Task, Project, Note, Invoice } from '@/types'
+import { useRealtime } from '@/hooks/useRealtime'
 
 interface Props {
-  todayTasks: Task[]
-  overdueTasks: Task[]
-  activeProjects: (Project & { progress: number; taskCount: number })[]
-  invoiceSummary: { TRY: number; USD: number; EUR: number }
+  userId: string
+  allTasks: Task[]
+  activeProjects: Project[]
+  pendingInvoices: Invoice[]
   recentNotes: Note[]
 }
 
@@ -140,7 +138,130 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
-export default function DashboardClient({ todayTasks, overdueTasks, activeProjects, invoiceSummary, recentNotes }: Props) {
+export default function DashboardClient({ userId, allTasks: initialTasks, activeProjects: initialProjects, pendingInvoices: initialInvoices, recentNotes: initialNotes }: Props) {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [projects, setProjects] = useState<Project[]>(initialProjects)
+  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices)
+  const [notes, setNotes] = useState<Note[]>(initialNotes)
+
+  // Realtime subscriptions
+  useRealtime<Task>({
+    table: 'tasks',
+    userId,
+    onInsert: (row) => {
+      if (row.status !== 'cancelled') {
+        setTasks(prev => prev.some(t => t.id === row.id) ? prev : [...prev, row])
+      }
+    },
+    onUpdate: (row) => {
+      if (row.status === 'cancelled') {
+        setTasks(prev => prev.filter(t => t.id !== row.id))
+      } else {
+        setTasks(prev => prev.map(t => t.id === row.id ? row : t))
+      }
+    },
+    onDelete: (id) => setTasks(prev => prev.filter(t => t.id !== id)),
+  })
+
+  useRealtime<Project>({
+    table: 'projects',
+    userId,
+    onInsert: (row) => {
+      if (row.status === 'active') {
+        setProjects(prev => prev.some(p => p.id === row.id) ? prev : [row, ...prev])
+      }
+    },
+    onUpdate: (row) => {
+      if (row.status !== 'active') {
+        setProjects(prev => prev.filter(p => p.id !== row.id))
+      } else {
+        setProjects(prev => prev.map(p => p.id === row.id ? row : p))
+      }
+    },
+    onDelete: (id) => setProjects(prev => prev.filter(p => p.id !== id)),
+  })
+
+  useRealtime<Invoice>({
+    table: 'invoices',
+    userId,
+    onInsert: (row) => {
+      if (['unpaid', 'partial', 'overdue'].includes(row.status)) {
+        setInvoices(prev => prev.some(i => i.id === row.id) ? prev : [...prev, row])
+      }
+    },
+    onUpdate: (row) => {
+      if (!['unpaid', 'partial', 'overdue'].includes(row.status)) {
+        setInvoices(prev => prev.filter(i => i.id !== row.id))
+      } else {
+        setInvoices(prev => prev.map(i => i.id === row.id ? row : i))
+      }
+    },
+    onDelete: (id) => setInvoices(prev => prev.filter(i => i.id !== id)),
+  })
+
+  useRealtime<Note>({
+    table: 'notes',
+    userId,
+    onInsert: (row) => {
+      if (!row.is_archived) {
+        setNotes(prev => {
+          if (prev.some(n => n.id === row.id)) return prev
+          return [row, ...prev].slice(0, 5)
+        })
+      }
+    },
+    onUpdate: (row) => {
+      if (row.is_archived) {
+        setNotes(prev => prev.filter(n => n.id !== row.id))
+      } else {
+        setNotes(prev => {
+          const exists = prev.some(n => n.id === row.id)
+          if (exists) return prev.map(n => n.id === row.id ? row : n)
+          return [row, ...prev].slice(0, 5)
+        })
+      }
+    },
+    onDelete: (id) => setNotes(prev => prev.filter(n => n.id !== id)),
+  })
+
+  // Derived data
+  const todayTasks = useMemo(() => {
+    const todayDate = new Date()
+    return tasks.filter(t => {
+      if (!t.due_date) return false
+      const d = new Date(t.due_date)
+      return d.getFullYear() === todayDate.getFullYear() &&
+        d.getMonth() === todayDate.getMonth() &&
+        d.getDate() === todayDate.getDate()
+    })
+  }, [tasks])
+
+  const overdueTasks = useMemo(() => {
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    return tasks.filter(t => {
+      if (!t.due_date || t.status === 'done') return false
+      return new Date(t.due_date) < todayStart
+    })
+  }, [tasks])
+
+  const projectsWithProgress = useMemo(() => {
+    return projects.map(p => {
+      const pTasks = tasks.filter(t => t.project_id === p.id)
+      const done = pTasks.filter(t => t.status === 'done').length
+      const progress = pTasks.length > 0 ? Math.round((done / pTasks.length) * 100) : 0
+      return { ...p, progress, taskCount: pTasks.length }
+    })
+  }, [projects, tasks])
+
+  const invoiceSummary = useMemo(() => {
+    const summary = { TRY: 0, USD: 0, EUR: 0 }
+    invoices.forEach(inv => {
+      summary[inv.currency as keyof typeof summary] += Number(inv.amount)
+    })
+    return summary
+  }, [invoices])
+
   const now = new Date()
   const hasInvoice = invoiceSummary.TRY > 0 || invoiceSummary.USD > 0 || invoiceSummary.EUR > 0
 
@@ -220,13 +341,13 @@ export default function DashboardClient({ todayTasks, overdueTasks, activeProjec
           <SectionHeader
             title="Aktif Projeler"
             href="/projeler"
-            count={activeProjects.length}
+            count={projectsWithProgress.length}
           />
-          {activeProjects.length === 0 ? (
+          {projectsWithProgress.length === 0 ? (
             <EmptyState message="Henüz aktif proje yok." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {activeProjects.slice(0, 4).map(p => (
+              {projectsWithProgress.slice(0, 4).map(p => (
                 <Link
                   key={p.id}
                   href={`/projeler/${p.id}`}
@@ -323,12 +444,12 @@ export default function DashboardClient({ todayTasks, overdueTasks, activeProjec
 
         {/* Son Notlar */}
         <div className="card" style={{ padding: 20 }}>
-          <SectionHeader title="Son Notlar" href="/notlar" count={recentNotes.length} />
-          {recentNotes.length === 0 ? (
+          <SectionHeader title="Son Notlar" href="/notlar" count={notes.length} />
+          {notes.length === 0 ? (
             <EmptyState message="Henüz not yok." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {recentNotes.map(note => (
+              {notes.map(note => (
                 <Link
                   key={note.id}
                   href={`/notlar/${note.id}`}

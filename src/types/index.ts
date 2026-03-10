@@ -90,6 +90,18 @@ export interface Invoice {
   created_at: string
 }
 
+export interface Expense {
+  id: string
+  title: string
+  amount: number
+  currency: Currency
+  category: string
+  expense_date: string
+  notes: string | null
+  is_paid: boolean
+  created_at: string
+}
+
 export interface Payment {
   id: string
   invoice_id: string

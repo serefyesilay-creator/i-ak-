@@ -6,11 +6,11 @@ import {
   LayoutDashboard,
   CheckSquare,
   FolderKanban,
-  CalendarDays,
   FileText,
   Wallet,
   LogOut,
   BarChart3,
+  TrendingDown,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -19,9 +19,9 @@ const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/gorevler', icon: CheckSquare, label: 'Görevler' },
   { href: '/projeler', icon: FolderKanban, label: 'Projeler' },
-  { href: '/takvim', icon: CalendarDays, label: 'Takvim' },
   { href: '/notlar', icon: FileText, label: 'Notlar' },
   { href: '/alacaklar', icon: Wallet, label: 'Alacaklar' },
+  { href: '/giderler', icon: TrendingDown, label: 'Giderler' },
   { href: '/raporlar', icon: BarChart3, label: 'Raporlar' },
 ]
 
