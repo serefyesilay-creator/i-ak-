@@ -110,7 +110,7 @@ export interface Payment {
   note: string | null
 }
 
-export type AssetCategory = 'Altın' | 'Döviz' | 'Hisse' | 'Kripto' | 'Gayrimenkul' | 'Tahvil' | 'Diğer'
+export type AssetCategory = 'Altın' | 'Döviz' | 'Hisse' | 'Kripto' | 'Gayrimenkul' | 'Tahvil' | 'Duran Varlık' | 'Diğer'
 
 export interface Asset {
   id: string

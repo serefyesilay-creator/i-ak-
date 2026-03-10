@@ -11,7 +11,7 @@ import type { Asset, AssetCategory } from '@/types'
 
 interface Props { initialAssets: Asset[] }
 
-const CATEGORIES: AssetCategory[] = ['Altın', 'Döviz', 'Hisse', 'Kripto', 'Gayrimenkul', 'Tahvil', 'Diğer']
+const CATEGORIES: AssetCategory[] = ['Altın', 'Döviz', 'Hisse', 'Kripto', 'Gayrimenkul', 'Tahvil', 'Duran Varlık', 'Diğer']
 
 const CAT_COLORS: Record<string, string> = {
   'Altın': '#F59E0B',
@@ -20,12 +20,13 @@ const CAT_COLORS: Record<string, string> = {
   'Kripto': '#8B5CF6',
   'Gayrimenkul': '#EC4899',
   'Tahvil': '#14B8A6',
+  'Duran Varlık': '#D97706',
   'Diğer': '#6B7280',
 }
 
 const CAT_EMOJI: Record<string, string> = {
   'Altın': '🥇', 'Döviz': '💵', 'Hisse': '📈', 'Kripto': '🪙',
-  'Gayrimenkul': '🏠', 'Tahvil': '📄', 'Diğer': '💼',
+  'Gayrimenkul': '🏠', 'Tahvil': '📄', 'Duran Varlık': '💎', 'Diğer': '💼',
 }
 
 const currencySymbol: Record<string, string> = { TRY: '₺', USD: '$', EUR: '€', GR: 'gr' }
@@ -57,15 +58,15 @@ export default function VarliklarClient({ initialAssets }: Props) {
 
   const summary = useMemo(() => {
     const byCat: Record<string, number> = {}
-    let totalTRY = 0
+    let grandTotal = 0
     assets.forEach(a => {
       const val = Number(a.quantity) * Number(a.unit_price)
       byCat[a.category] = (byCat[a.category] ?? 0) + val
-      if (a.currency === 'TRY') totalTRY += val
+      grandTotal += val
     })
     const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1])
     const max = sorted[0]?.[1] ?? 1
-    return { byCat: sorted, max, totalTRY }
+    return { byCat: sorted, max, grandTotal }
   }, [assets])
 
   const editingAsset = editingId ? assets.find(a => a.id === editingId) : null
@@ -120,11 +121,36 @@ export default function VarliklarClient({ initialAssets }: Props) {
         </button>
       </div>
 
+      {/* Toplam TL Kartı — her zaman görünür */}
+      <div className="card" style={{ padding: '20px 24px', marginBottom: 20, background: 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.04) 100%)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Toplam Portföy Değeri</div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: '#F59E0B' }}>
+            ₺{summary.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{assets.length} varlık · {summary.byCat.length} kategori</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+          {summary.byCat.slice(0, 3).map(([cat, val]) => (
+            <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12 }}>{CAT_EMOJI[cat]}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{cat}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: CAT_COLORS[cat] ?? '#6B7280' }}>
+                ₺{val.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                %{summary.grandTotal > 0 ? Math.round((val / summary.grandTotal) * 100) : 0}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {assets.length === 0 ? (
         <div className="card" style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary)' }}>
           <TrendingUp size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
           <p style={{ fontSize: 16, fontWeight: 500 }}>Henüz varlık eklenmedi</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>Altın, döviz, hisse gibi varlıklarını ekleyebilirsin.</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>Altın, döviz, hisse, duran varlık gibi her şeyi ekleyebilirsin.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -183,12 +209,14 @@ export default function VarliklarClient({ initialAssets }: Props) {
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-primary)' }}>
-                        {Number(a.quantity).toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                        {a.category === 'Duran Varlık' ? '—' : Number(a.quantity).toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-primary)' }}>
-                        {sym === 'gr'
-                          ? `${Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺/gr`
-                          : `${sym}${Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`}
+                        {a.category === 'Duran Varlık'
+                          ? '—'
+                          : sym === 'gr'
+                            ? `${Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺/gr`
+                            : `${sym}${Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{ fontSize: 15, fontWeight: 700, color }}>
@@ -299,7 +327,12 @@ function AssetModal({ initial, onClose, onSave }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={ls}>Varlık Adı *</label>
-            <input className="input" placeholder="Örn: Gram Altın, BIST100, Bitcoin" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+            <input className="input"
+              placeholder={form.category === 'Duran Varlık' ? 'Örn: Evlilik bileziği, Daire, Araba' : 'Örn: Gram Altın, BIST100, Bitcoin'}
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              autoFocus
+            />
           </div>
 
           <div>
@@ -318,16 +351,24 @@ function AssetModal({ initial, onClose, onSave }: {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {form.category === 'Duran Varlık' ? (
             <div>
-              <label style={ls}>Miktar *</label>
-              <input type="text" inputMode="decimal" className="input" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} />
+              <label style={ls}>Tahmini Değer (₺) *</label>
+              <input type="text" inputMode="decimal" className="input" placeholder="0.00" value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value, quantity: '1' }))} />
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Miktar otomatik 1 olarak ayarlanır</div>
             </div>
-            <div>
-              <label style={ls}>Birim Fiyat *</label>
-              <input type="text" inputMode="decimal" className="input" placeholder="0.00" value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))} />
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={ls}>Miktar *</label>
+                <input type="text" inputMode="decimal" className="input" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} />
+              </div>
+              <div>
+                <label style={ls}>Birim Fiyat *</label>
+                <input type="text" inputMode="decimal" className="input" placeholder="0.00" value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))} />
+              </div>
             </div>
-          </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
@@ -336,7 +377,7 @@ function AssetModal({ initial, onClose, onSave }: {
                 <option value="TRY">TRY ₺</option>
                 <option value="USD">USD $</option>
                 <option value="EUR">EUR €</option>
-                <option value="GR">Gram (gr)</option>
+                {form.category !== 'Duran Varlık' && <option value="GR">Gram (gr)</option>}
               </select>
             </div>
             <div>

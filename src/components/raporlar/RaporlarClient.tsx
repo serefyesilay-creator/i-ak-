@@ -37,11 +37,12 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const ASSET_COLORS: Record<string, string> = {
     'Altın': '#F59E0B', 'Döviz': '#3B82F6', 'Hisse': '#22C55E',
-    'Kripto': '#8B5CF6', 'Gayrimenkul': '#EC4899', 'Tahvil': '#14B8A6', 'Diğer': '#6B7280',
+    'Kripto': '#8B5CF6', 'Gayrimenkul': '#EC4899', 'Tahvil': '#14B8A6',
+    'Duran Varlık': '#D97706', 'Diğer': '#6B7280',
 }
 const ASSET_EMOJI: Record<string, string> = {
     'Altın': '🥇', 'Döviz': '💵', 'Hisse': '📈', 'Kripto': '🪙',
-    'Gayrimenkul': '🏠', 'Tahvil': '📄', 'Diğer': '💼',
+    'Gayrimenkul': '🏠', 'Tahvil': '📄', 'Duran Varlık': '💎', 'Diğer': '💼',
 }
 
 export default function RaporlarClient({ tasks, projects, invoices, clients, expenses, assets }: Props) {
