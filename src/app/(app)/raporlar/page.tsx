@@ -9,12 +9,13 @@ export default async function RaporlarPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/auth/login')
 
-    const [tasksRes, projectsRes, invoicesRes, clientsRes, expensesRes] = await Promise.all([
+    const [tasksRes, projectsRes, invoicesRes, clientsRes, expensesRes, assetsRes] = await Promise.all([
         supabase.from('tasks').select('id, title, status, priority, due_date, created_at, project_id').eq('user_id', user.id),
         supabase.from('projects').select('id, name, color, status').eq('user_id', user.id),
         supabase.from('invoices').select('id, amount, currency, status, due_date, client_id, created_at').eq('user_id', user.id),
         supabase.from('clients').select('id, name, company').eq('user_id', user.id),
         supabase.from('expenses').select('id, amount, currency, category, expense_date').eq('user_id', user.id),
+        supabase.from('assets').select('id, name, category, quantity, unit_price, currency').eq('user_id', user.id),
     ])
 
     return (
@@ -24,6 +25,7 @@ export default async function RaporlarPage() {
             invoices={invoicesRes.data ?? []}
             clients={clientsRes.data ?? []}
             expenses={expensesRes.data ?? []}
+            assets={assetsRes.data ?? []}
         />
     )
 }

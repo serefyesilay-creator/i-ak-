@@ -10,6 +10,7 @@ import {
   Wallet,
   BarChart3,
   TrendingDown,
+  Landmark,
 } from 'lucide-react'
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/notlar', icon: FileText, label: 'Notlar' },
   { href: '/alacaklar', icon: Wallet, label: 'Alacaklar' },
   { href: '/giderler', icon: TrendingDown, label: 'Giderler' },
+  { href: '/varliklar', icon: Landmark, label: 'Varlıklar' },
   { href: '/raporlar', icon: BarChart3, label: 'Raporlar' },
 ]
 

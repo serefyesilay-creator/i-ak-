@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import {
     BarChart3, TrendingUp, TrendingDown, CheckCircle2,
-    AlertCircle, Wallet, FolderKanban, Target,
+    AlertCircle, Wallet, FolderKanban, Target, Landmark,
 } from 'lucide-react'
 import { format, subMonths, isSameMonth, isBefore, startOfMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -13,6 +13,7 @@ interface ProjectItem { id: string; name: string; color: string; status: string 
 interface InvoiceItem { id: string; amount: number; currency: string; status: string; due_date: string | null; client_id: string; created_at: string }
 interface ClientItem { id: string; name: string; company: string | null }
 interface ExpenseItem { id: string; amount: number; currency: string; category: string; expense_date: string }
+interface AssetItem { id: string; name: string; category: string; quantity: number; unit_price: number; currency: string }
 
 interface Props {
     tasks: TaskItem[]
@@ -20,6 +21,7 @@ interface Props {
     invoices: InvoiceItem[]
     clients: ClientItem[]
     expenses: ExpenseItem[]
+    assets: AssetItem[]
 }
 
 const priorityColors: Record<string, string> = { low: '#22C55E', medium: '#F59E0B', high: '#EF4444', urgent: '#DC2626' }
@@ -33,7 +35,16 @@ const CATEGORY_COLORS: Record<string, string> = {
     'Ulaşım': '#F97316', 'Yemek': '#84CC16', 'Diğer': '#6B7280',
 }
 
-export default function RaporlarClient({ tasks, projects, invoices, clients, expenses }: Props) {
+const ASSET_COLORS: Record<string, string> = {
+    'Altın': '#F59E0B', 'Döviz': '#3B82F6', 'Hisse': '#22C55E',
+    'Kripto': '#8B5CF6', 'Gayrimenkul': '#EC4899', 'Tahvil': '#14B8A6', 'Diğer': '#6B7280',
+}
+const ASSET_EMOJI: Record<string, string> = {
+    'Altın': '🥇', 'Döviz': '💵', 'Hisse': '📈', 'Kripto': '🪙',
+    'Gayrimenkul': '🏠', 'Tahvil': '📄', 'Diğer': '💼',
+}
+
+export default function RaporlarClient({ tasks, projects, invoices, clients, expenses, assets }: Props) {
     const now = new Date()
 
     // ── Task Stats ──
@@ -113,6 +124,20 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
     const paidRevenue = invoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + Number(inv.amount), 0)
     const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
     const netBalance = paidRevenue - totalExpense
+
+    // ── Asset Stats ──
+    const assetStats = useMemo(() => {
+        const byCat: Record<string, number> = {}
+        let total = 0
+        assets.forEach(a => {
+            const val = Number(a.quantity) * Number(a.unit_price)
+            byCat[a.category] = (byCat[a.category] ?? 0) + val
+            total += val
+        })
+        const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1])
+        const max = sorted[0]?.[1] ?? 1
+        return { byCat: sorted, total, max }
+    }, [assets])
 
     return (
         <div>
@@ -316,6 +341,46 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
                         )
                     })}
                 </div>
+            </div>
+
+            {/* ── Asset Summary ── */}
+            <div className="card" style={{ padding: 20, marginTop: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <h3 style={sectionTitle}>
+                        <Landmark size={16} style={{ marginRight: 6 }} />
+                        Varlık Dağılımı
+                    </h3>
+                    <span style={{ fontSize: 20, fontWeight: 800, color: '#F59E0B' }}>
+                        ₺{assetStats.total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+                    </span>
+                </div>
+                {assetStats.byCat.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Henüz varlık eklenmedi.</p>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {assetStats.byCat.map(([cat, val]) => {
+                            const color = ASSET_COLORS[cat] ?? '#6B7280'
+                            const pct = assetStats.total > 0 ? Math.round((val / assetStats.total) * 100) : 0
+                            return (
+                                <div key={cat}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 14 }}>{ASSET_EMOJI[cat] ?? '💼'}</span>
+                                            <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{cat}</span>
+                                            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{pct}%</span>
+                                        </div>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color }}>
+                                            ₺{val.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+                                        </span>
+                                    </div>
+                                    <div style={{ height: 8, backgroundColor: 'var(--bg-surface)', borderRadius: 4, overflow: 'hidden' }}>
+                                        <div style={{ height: '100%', width: `${(val / assetStats.max) * 100}%`, backgroundColor: color, borderRadius: 4, transition: 'width 0.8s ease' }} />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     )

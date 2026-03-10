@@ -109,3 +109,17 @@ export interface Payment {
   paid_at: string
   note: string | null
 }
+
+export type AssetCategory = 'Altın' | 'Döviz' | 'Hisse' | 'Kripto' | 'Gayrimenkul' | 'Tahvil' | 'Diğer'
+
+export interface Asset {
+  id: string
+  name: string
+  category: AssetCategory
+  quantity: number
+  unit_price: number
+  currency: Currency
+  purchase_date: string | null
+  notes: string | null
+  created_at: string
+}
