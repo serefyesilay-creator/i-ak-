@@ -28,7 +28,7 @@ const CAT_EMOJI: Record<string, string> = {
   'Gayrimenkul': '🏠', 'Tahvil': '📄', 'Diğer': '💼',
 }
 
-const currencySymbol: Record<string, string> = { TRY: '₺', USD: '$', EUR: '€' }
+const currencySymbol: Record<string, string> = { TRY: '₺', USD: '$', EUR: '€', GR: 'gr' }
 const ls: React.CSSProperties = { display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }
 
 export default function VarliklarClient({ initialAssets }: Props) {
@@ -186,11 +186,15 @@ export default function VarliklarClient({ initialAssets }: Props) {
                         {Number(a.quantity).toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-primary)' }}>
-                        {sym}{Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                        {sym === 'gr'
+                          ? `${Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺/gr`
+                          : `${sym}${Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{ fontSize: 15, fontWeight: 700, color }}>
-                          {sym}{total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+                          {sym === 'gr'
+                            ? `₺${total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`
+                            : `${sym}${total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`}
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -332,6 +336,7 @@ function AssetModal({ initial, onClose, onSave }: {
                 <option value="TRY">TRY ₺</option>
                 <option value="USD">USD $</option>
                 <option value="EUR">EUR €</option>
+                <option value="GR">Gram (gr)</option>
               </select>
             </div>
             <div>
@@ -345,8 +350,9 @@ function AssetModal({ initial, onClose, onSave }: {
             <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-surface)', borderRadius: 8, fontSize: 14 }}>
               <span style={{ color: 'var(--text-secondary)' }}>Toplam Değer: </span>
               <span style={{ fontWeight: 700, color: '#F59E0B' }}>
-                {currencySymbol[form.currency] ?? '₺'}
+                {form.currency === 'GR' ? '₺' : (currencySymbol[form.currency] ?? '₺')}
                 {(parseFloat(form.quantity.replace(',', '.') || '0') * parseFloat(form.unit_price.replace(',', '.') || '0')).toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+                {form.currency === 'GR' && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 4 }}>({form.quantity} gr × {form.unit_price} ₺/gr)</span>}
               </span>
             </div>
           )}
