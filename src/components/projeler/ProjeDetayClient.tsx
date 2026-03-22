@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import {
   DndContext, DragEndEvent, DragOverEvent, DragStartEvent,
   PointerSensor, TouchSensor, useSensor, useSensors, DragOverlay, closestCorners,
+  useDroppable,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
@@ -103,6 +104,7 @@ function KanbanCol({
 }) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(column.title)
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: column.id })
 
   function saveRename() {
     if (!title.trim()) { setTitle(column.title); setEditing(false); return }
@@ -111,7 +113,7 @@ function KanbanCol({
   }
 
   return (
-    <div style={{ minWidth: 280, maxWidth: 280, backgroundColor: 'var(--bg-surface)', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+    <div style={{ minWidth: 280, maxWidth: 280, backgroundColor: 'var(--bg-surface)', borderRadius: 12, border: `1px solid ${isOver ? 'var(--accent)' : 'var(--border)'}`, display: 'flex', flexDirection: 'column', flexShrink: 0, transition: 'border-color 0.15s' }}>
       {/* Header */}
       <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
         {editing ? (
@@ -143,7 +145,7 @@ function KanbanCol({
       </div>
 
       {/* Tasks */}
-      <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 280px)' }} className="scroll-ios">
+      <div ref={setDropRef} style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', backgroundColor: isOver ? 'rgba(99,102,241,0.04)' : undefined, transition: 'background-color 0.15s', borderRadius: '0 0 12px 12px' }} className="scroll-ios">
         {tasks.map(task => (
           <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
         ))}
@@ -312,26 +314,31 @@ export default function ProjeDetayClient({ project, initialColumns, initialTasks
     if (!over) return
     const dragged = tasks.find(t => t.id === active.id)
     if (!dragged) return
+
+    // Sütun üzerine sürüklenme
     const overColumn = columns.find(c => c.id === over.id)
-    if (overColumn && dragged.kanban_column_id !== overColumn.id) {
-      setTasks(prev => prev.map(t => t.id === dragged.id ? { ...t, kanban_column_id: overColumn.id } : t))
+    if (overColumn) {
+      if (dragged.kanban_column_id !== overColumn.id) {
+        setTasks(prev => prev.map(t => t.id === dragged.id ? { ...t, kanban_column_id: overColumn.id } : t))
+      }
+      return
+    }
+
+    // Başka bir görev üzerine sürüklenme → o görevin sütununa taşı
+    const overTask = tasks.find(t => t.id === over.id)
+    if (overTask && overTask.kanban_column_id !== dragged.kanban_column_id) {
+      setTasks(prev => prev.map(t => t.id === dragged.id ? { ...t, kanban_column_id: overTask.kanban_column_id } : t))
     }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
+    const { active } = event
     setActiveTask(null)
-    if (!over) return
+    // handleDragOver zaten state'i güncelledi, şimdi DB'ye kaydet
     const movedTask = tasks.find(t => t.id === active.id)
-    if (!movedTask) return
-    const overTask = tasks.find(t => t.id === over.id)
-    const targetColumnId = overTask
-      ? (overTask.kanban_column_id ?? columns[0]?.id)
-      : columns.find(c => c.id === over.id)?.id ?? movedTask.kanban_column_id
-    if (!targetColumnId) return
-    const { error } = await supabase.from('tasks').update({ kanban_column_id: targetColumnId, updated_at: new Date().toISOString() }).eq('id', movedTask.id)
+    if (!movedTask || !movedTask.kanban_column_id) return
+    const { error } = await supabase.from('tasks').update({ kanban_column_id: movedTask.kanban_column_id, updated_at: new Date().toISOString() }).eq('id', movedTask.id)
     if (error) { toast.error('Taşıma başarısız'); return }
-    setTasks(prev => prev.map(t => t.id === movedTask.id ? { ...t, kanban_column_id: targetColumnId } : t))
   }
 
   // ─── Task Operations ───────────────────────────────────────────────────────
