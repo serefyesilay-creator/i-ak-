@@ -320,23 +320,11 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                         key={share.id}
                         onClick={() => openEditModal(share)}
                         style={{
-                          backgroundColor: getClientColor(share.client_id),
-                          opacity: share.is_shared ? 0.3 : 0.15,
-                          borderLeft: `3px solid ${getClientColor(share.client_id)}`,
-                          padding: 8,
-                          borderRadius: 6,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
                           position: 'relative',
-                        }}
-                        onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.4' : '0.25'
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.3' : '0.15'
+                          cursor: 'pointer',
                         }}
                       >
-                        {/* Status Badge */}
+                        {/* Status Badge - Full Opacity */}
                         <div style={{
                           display: 'inline-block',
                           backgroundColor: getShareStatusColor(share.is_shared),
@@ -346,43 +334,65 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                           fontSize: 11,
                           fontWeight: 700,
                           marginBottom: 8,
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                          textShadow: '0 1px 1px rgba(0,0,0,0.1)',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                          textShadow: '0 1px 1px rgba(0,0,0,0.15)',
                           letterSpacing: '0.3px',
+                          position: 'relative',
+                          zIndex: 1,
                         }}>
                           {share.is_shared ? '✓ Paylaşıldı' : '⏳ Planlandı'}
                         </div>
 
-                        <p style={{
-                          color: 'var(--text-primary)',
-                          fontSize: 12,
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          textDecoration: share.status === 'cancelled' ? 'line-through' : 'none',
-                        }}>
-                          {client?.name}
-                        </p>
-                        <p style={{
-                          color: 'var(--text-secondary)',
-                          fontSize: 11,
-                          marginTop: 2,
-                        }}>
-                          {share.platform} • {share.status}
-                        </p>
-                        {share.title && (
+                        {/* Card Content - Transparent Background */}
+                        <div
+                          style={{
+                            backgroundColor: getClientColor(share.client_id),
+                            opacity: share.is_shared ? 0.3 : 0.15,
+                            borderLeft: `3px solid ${getClientColor(share.client_id)}`,
+                            padding: 8,
+                            borderRadius: 6,
+                            marginTop: -6,
+                            paddingTop: 24,
+                            transition: 'all 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.4' : '0.25'
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.3' : '0.15'
+                          }}
+                        >
                           <p style={{
-                            color: 'var(--text-secondary)',
-                            fontSize: 10,
-                            marginTop: 4,
+                            color: 'var(--text-primary)',
+                            fontSize: 12,
+                            fontWeight: 500,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
+                            textDecoration: share.status === 'cancelled' ? 'line-through' : 'none',
                           }}>
-                            {share.title}
+                            {client?.name}
                           </p>
-                        )}
+                          <p style={{
+                            color: 'var(--text-secondary)',
+                            fontSize: 11,
+                            marginTop: 2,
+                          }}>
+                            {share.platform} • {share.status}
+                          </p>
+                          {share.title && (
+                            <p style={{
+                              color: 'var(--text-secondary)',
+                              fontSize: 10,
+                              marginTop: 4,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}>
+                              {share.title}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     )
                   })}
