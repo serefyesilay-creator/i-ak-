@@ -368,11 +368,11 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                         />
 
                         {/* Content Layer - Full Opacity */}
-                        <div style={{ position: 'relative', zIndex: 1, padding: '8px', paddingTop: '32px' }}>
+                        <div style={{ position: 'relative', zIndex: 1, padding: '8px', paddingTop: '32px', backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '0 0 6px 6px' }}>
                           <p style={{
-                            color: '#111827',
-                            fontSize: 12,
-                            fontWeight: 700,
+                            color: '#000',
+                            fontSize: 13,
+                            fontWeight: 800,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -382,9 +382,9 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                             {client?.name}
                           </p>
                           <p style={{
-                            color: '#374151',
-                            fontSize: 11,
-                            fontWeight: 600,
+                            color: '#1F2937',
+                            fontSize: 12,
+                            fontWeight: 700,
                             margin: '4px 0 0 0',
                           }}>
                             {share.platform} • {share.status}
