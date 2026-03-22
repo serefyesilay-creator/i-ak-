@@ -389,19 +389,6 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                           }}>
                             {share.platform} • {share.status}
                           </p>
-                          {share.title && (
-                            <p style={{
-                              color: '#374151',
-                              fontSize: 10,
-                              fontWeight: 600,
-                              margin: '4px 0 0 0',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}>
-                              {share.title}
-                            </p>
-                          )}
                         </div>
                       </div>
                     )
