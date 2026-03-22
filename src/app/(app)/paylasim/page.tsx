@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+// Weekly sharing calendar page
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import PaylasimClient from '@/components/paylasim/PaylasimClient'
