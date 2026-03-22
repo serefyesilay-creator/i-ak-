@@ -115,6 +115,10 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
     return COLORS[index % COLORS.length]
   }
 
+  const getShareStatusColor = (isShared: boolean) => {
+    return isShared ? '#22C55E' : '#F59E0B' // Paylaşıldı=yeşil, Paylaşılmadı=sarı
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'planned':
@@ -332,30 +336,31 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                           (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.3' : '0.15'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 4 }}>
-                          <p style={{
-                            color: 'var(--text-primary)',
-                            fontSize: 12,
-                            fontWeight: 500,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            flex: 1,
-                            textDecoration: share.status === 'cancelled' ? 'line-through' : 'none',
-                          }}>
-                            {client?.name}
-                          </p>
-                          {share.is_shared && (
-                            <span style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: '#22C55E',
-                              whiteSpace: 'nowrap',
-                            }}>
-                              ✓
-                            </span>
-                          )}
+                        {/* Status Badge */}
+                        <div style={{
+                          display: 'inline-block',
+                          backgroundColor: getShareStatusColor(share.is_shared),
+                          color: '#fff',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          marginBottom: 8,
+                        }}>
+                          {share.is_shared ? '✓ Paylaşıldı' : '⏳ Planlandı'}
                         </div>
+
+                        <p style={{
+                          color: 'var(--text-primary)',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          textDecoration: share.status === 'cancelled' ? 'line-through' : 'none',
+                        }}>
+                          {client?.name}
+                        </p>
                         <p style={{
                           color: 'var(--text-secondary)',
                           fontSize: 11,
@@ -558,21 +563,47 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                 </select>
               </div>
 
-              {/* Is Shared Checkbox */}
+              {/* Is Shared Toggle */}
               <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.isShared}
-                    onChange={(e) => setFormData(p => ({ ...p, isShared: e.target.checked }))}
-                    style={{
-                      width: 18,
-                      height: 18,
-                      cursor: 'pointer',
-                    }}
-                  />
-                  <span style={{ color: 'var(--text-primary)', fontSize: 14 }}>Paylaşıldı</span>
+                <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 12, marginBottom: 6 }}>
+                  Durum
                 </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setFormData(p => ({ ...p, isShared: true }))}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      backgroundColor: formData.isShared ? '#22C55E' : 'var(--bg-card)',
+                      border: `1px solid ${formData.isShared ? '#22C55E' : 'var(--border)'}`,
+                      borderRadius: 6,
+                      color: formData.isShared ? '#fff' : 'var(--text-primary)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    ✓ Paylaşıldı
+                  </button>
+                  <button
+                    onClick={() => setFormData(p => ({ ...p, isShared: false }))}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      backgroundColor: !formData.isShared ? '#F59E0B' : 'var(--bg-card)',
+                      border: `1px solid ${!formData.isShared ? '#F59E0B' : 'var(--border)'}`,
+                      borderRadius: 6,
+                      color: !formData.isShared ? '#fff' : 'var(--text-primary)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    ⏳ Planlandı
+                  </button>
+                </div>
               </div>
 
               {/* Date */}
