@@ -341,11 +341,14 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                           display: 'inline-block',
                           backgroundColor: getShareStatusColor(share.is_shared),
                           color: '#fff',
-                          padding: '2px 8px',
+                          padding: '4px 10px',
                           borderRadius: 4,
-                          fontSize: 10,
-                          fontWeight: 600,
+                          fontSize: 11,
+                          fontWeight: 700,
                           marginBottom: 8,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                          textShadow: '0 1px 1px rgba(0,0,0,0.1)',
+                          letterSpacing: '0.3px',
                         }}>
                           {share.is_shared ? '✓ Paylaşıldı' : '⏳ Planlandı'}
                         </div>
