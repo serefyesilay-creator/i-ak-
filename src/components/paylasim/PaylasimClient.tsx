@@ -338,39 +338,46 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                           textShadow: '0 1px 1px rgba(0,0,0,0.15)',
                           letterSpacing: '0.3px',
                           position: 'relative',
-                          zIndex: 1,
+                          zIndex: 2,
                         }}>
                           {share.is_shared ? '✓ Paylaşıldı' : '⏳ Planlandı'}
                         </div>
 
-                        {/* Card Content - Transparent Background */}
+                        {/* Background Layer - Transparent Only */}
                         <div
                           style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
                             backgroundColor: getClientColor(share.client_id),
-                            opacity: share.is_shared ? 0.3 : 0.15,
+                            opacity: share.is_shared ? 0.25 : 0.12,
                             borderLeft: `3px solid ${getClientColor(share.client_id)}`,
-                            padding: 8,
                             borderRadius: 6,
-                            marginTop: -6,
-                            paddingTop: 24,
                             transition: 'all 0.2s ease',
+                            zIndex: 0,
+                            pointerEvents: 'none',
                           }}
                           onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.4' : '0.25'
+                            (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.35' : '0.2'
                           }}
                           onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.3' : '0.15'
+                            (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.25' : '0.12'
                           }}
-                        >
+                        />
+
+                        {/* Content Layer - Full Opacity */}
+                        <div style={{ position: 'relative', zIndex: 1, padding: '8px', paddingTop: '32px' }}>
                           <p style={{
-                            color: '#1F2937',
+                            color: '#111827',
                             fontSize: 12,
                             fontWeight: 700,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             textDecoration: share.status === 'cancelled' ? 'line-through' : 'none',
-                            textShadow: '0 1px 1px rgba(255,255,255,0.3)',
+                            margin: 0,
                           }}>
                             {client?.name}
                           </p>
@@ -378,8 +385,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                             color: '#374151',
                             fontSize: 11,
                             fontWeight: 600,
-                            marginTop: 2,
-                            textShadow: '0 1px 1px rgba(255,255,255,0.2)',
+                            margin: '4px 0 0 0',
                           }}>
                             {share.platform} • {share.status}
                           </p>
@@ -388,11 +394,10 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                               color: '#374151',
                               fontSize: 10,
                               fontWeight: 600,
-                              marginTop: 4,
+                              margin: '4px 0 0 0',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
-                              textShadow: '0 1px 1px rgba(255,255,255,0.2)',
                             }}>
                               {share.title}
                             </p>
