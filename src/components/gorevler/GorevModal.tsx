@@ -10,6 +10,7 @@ interface Props {
   task: Task | null
   projects: { id: string; name: string; color: string }[]
   defaultColumnId?: string
+  defaultProjectId?: string
   defaultDate?: string
   onClose: () => void
   onSaved: (task: Task, isEdit: boolean) => void
@@ -40,7 +41,7 @@ const defaultForm: FormState = {
   recurrence_type: 'weekly',
 }
 
-export default function GorevModal({ task, projects, defaultColumnId, defaultDate, onClose, onSaved, onDelete }: Props) {
+export default function GorevModal({ task, projects, defaultColumnId, defaultProjectId, defaultDate, onClose, onSaved, onDelete }: Props) {
   const [form, setForm] = useState<FormState>(defaultForm)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
@@ -59,9 +60,9 @@ export default function GorevModal({ task, projects, defaultColumnId, defaultDat
         recurrence_type: task.recurrence_type ?? 'weekly',
       })
     } else {
-      setForm({ ...defaultForm, due_date: defaultDate ?? '' })
+      setForm({ ...defaultForm, due_date: defaultDate ?? '', project_id: defaultProjectId ?? '' })
     }
-  }, [task, defaultDate])
+  }, [task, defaultDate, defaultProjectId])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

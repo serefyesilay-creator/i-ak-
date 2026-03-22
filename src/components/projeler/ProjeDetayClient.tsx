@@ -562,6 +562,7 @@ export default function ProjeDetayClient({ project, initialColumns, initialTasks
           task={editingTask}
           projects={[{ id: project.id, name: project.name, color: project.color }]}
           defaultColumnId={defaultColumnId ?? undefined}
+          defaultProjectId={project.id}
           onClose={() => { setShowTaskModal(false); setEditingTask(null); setDefaultColumnId(null) }}
           onSaved={handleTaskSaved}
           onDelete={editingTask ? () => deleteTask(editingTask.id) : undefined}
