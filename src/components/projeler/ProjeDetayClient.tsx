@@ -144,11 +144,9 @@ function KanbanCol({
 
       {/* Tasks */}
       <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 280px)' }} className="scroll-ios">
-        <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map(task => (
-            <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
-          ))}
-        </SortableContext>
+        {tasks.map(task => (
+          <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+        ))}
         {tasks.length === 0 && (
           <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)', fontSize: 12 }}>Görev yok</div>
         )}
@@ -502,21 +500,22 @@ export default function ProjeDetayClient({ project, initialColumns, initialTasks
 
       {/* Kanban Board */}
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-        <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 20, alignItems: 'flex-start' }} className="scroll-ios">
-          {columns.map(col => {
-            const colTasks = tasks.filter(t => t.kanban_column_id === col.id || (!t.kanban_column_id && col.order === 0))
-            return (
-              <KanbanCol
-                key={col.id}
-                column={col}
-                tasks={colTasks}
-                onAddTask={handleAddTask}
-                onTaskClick={t => { setEditingTask(t); setShowTaskModal(true) }}
-                onRename={renameColumn}
-                onDelete={deleteColumn}
-              />
-            )
-          })}
+        <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+          <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 20, alignItems: 'flex-start' }} className="scroll-ios">
+            {columns.map(col => {
+              const colTasks = tasks.filter(t => t.kanban_column_id === col.id || (!t.kanban_column_id && col.order === 0))
+              return (
+                <KanbanCol
+                  key={col.id}
+                  column={col}
+                  tasks={colTasks}
+                  onAddTask={handleAddTask}
+                  onTaskClick={t => { setEditingTask(t); setShowTaskModal(true) }}
+                  onRename={renameColumn}
+                  onDelete={deleteColumn}
+                />
+              )
+            })}
 
           {/* Add Column */}
           <div style={{ minWidth: 240, flexShrink: 0 }}>
@@ -545,7 +544,8 @@ export default function ProjeDetayClient({ project, initialColumns, initialTasks
               </button>
             )}
           </div>
-        </div>
+          </div>
+        </SortableContext>
 
         <DragOverlay>
           {activeTask && (
