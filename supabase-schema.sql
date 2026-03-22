@@ -153,6 +153,7 @@ CREATE TABLE content_shares (
     CHECK (platform IN ('instagram', 'youtube')),
   status TEXT DEFAULT 'planned'
     CHECK (status IN ('planned', 'ready', 'published', 'cancelled')),
+  is_shared BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -15,6 +15,7 @@ export interface ContentShare {
   title: string | null
   platform: ContentSharePlatform
   status: ContentShareStatus
+  is_shared: boolean
   created_at: string
 }
 

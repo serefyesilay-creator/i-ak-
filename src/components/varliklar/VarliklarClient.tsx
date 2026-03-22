@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRealtime } from '@/hooks/useRealtime'
 import toast from 'react-hot-toast'
-import { Plus, Pencil, Trash2, X, Check, TrendingUp } from 'lucide-react'
-import { format } from 'date-fns'
+import { Plus, Pencil, Trash2, X, TrendingUp, BarChart3 } from 'lucide-react'
+import { format, subMonths, startOfMonth, endOfMonth, isSameMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import type { Asset, AssetCategory } from '@/types'
+import type { Asset, AssetCategory, AssetSnapshot } from '@/types'
 
 interface Props { initialAssets: Asset[] }
 
@@ -38,11 +38,25 @@ export default function VarliklarClient({ initialAssets }: Props) {
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string>('')
+  const [snapshots, setSnapshots] = useState<AssetSnapshot[]>([])
+  const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
   const supabase = createClient()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => { if (data.user) setUserId(data.user.id) })
   }, [])
+
+  // Fetch recent snapshots for trend chart
+  useEffect(() => {
+    if (!userId) return
+    const since = format(startOfMonth(subMonths(new Date(), 12)), 'yyyy-MM-dd')
+    supabase.from('asset_snapshots')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('snapshot_date', since)
+      .order('snapshot_date', { ascending: true })
+      .then(({ data }) => { if (data) setSnapshots(data as AssetSnapshot[]) })
+  }, [userId])
 
   useRealtime<Asset>({
     table: 'assets', userId,
@@ -51,15 +65,18 @@ export default function VarliklarClient({ initialAssets }: Props) {
     onDelete: (id) => setAssets(prev => prev.filter(a => a.id !== id)),
   })
 
+  const duranVarliklar = useMemo(() => assets.filter(a => a.category === 'Duran Varlık'), [assets])
+  const finansalVarliklar = useMemo(() => assets.filter(a => a.category !== 'Duran Varlık'), [assets])
+
   const filtered = useMemo(() =>
-    filterCat === 'Tümü' ? assets : assets.filter(a => a.category === filterCat),
-    [assets, filterCat]
+    filterCat === 'Tümü' ? finansalVarliklar : finansalVarliklar.filter(a => a.category === filterCat),
+    [finansalVarliklar, filterCat]
   )
 
   const summary = useMemo(() => {
     const byCat: Record<string, number> = {}
     let grandTotal = 0
-    assets.forEach(a => {
+    finansalVarliklar.forEach(a => {
       const val = Number(a.quantity) * Number(a.unit_price)
       byCat[a.category] = (byCat[a.category] ?? 0) + val
       grandTotal += val
@@ -67,17 +84,56 @@ export default function VarliklarClient({ initialAssets }: Props) {
     const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1])
     const max = sorted[0]?.[1] ?? 1
     return { byCat: sorted, max, grandTotal }
-  }, [assets])
+  }, [finansalVarliklar])
+
+  // Auto-save today's snapshot when portfolio total is known and user is loaded
+  const saveSnapshot = useCallback(async (total: number, breakdown: Record<string, number>, uid: string) => {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    await supabase.from('asset_snapshots').upsert(
+      { user_id: uid, snapshot_date: today, total_value: total, breakdown },
+      { onConflict: 'user_id,snapshot_date' }
+    )
+  }, [supabase])
+
+  useEffect(() => {
+    if (!userId || summary.grandTotal === 0) return
+    const breakdown: Record<string, number> = {}
+    summary.byCat.forEach(([cat, val]) => { breakdown[cat] = val })
+    saveSnapshot(summary.grandTotal, breakdown, userId)
+  }, [userId, summary.grandTotal])
+
+  // Build monthly trend data from snapshots
+  const trendData = useMemo(() => {
+    const months: { label: string; value: number; month: Date }[] = []
+    for (let i = trendMonths - 1; i >= 0; i--) {
+      const m = startOfMonth(subMonths(new Date(), i))
+      const mEnd = endOfMonth(m)
+      // Find the latest snapshot within this month
+      const mSnaps = snapshots.filter(s => {
+        const d = new Date(s.snapshot_date)
+        return d >= m && d <= mEnd
+      })
+      const latest = mSnaps[mSnaps.length - 1]
+      months.push({ label: format(m, 'MMM yy', { locale: tr }), value: latest?.total_value ?? 0, month: m })
+    }
+    return months
+  }, [snapshots, trendMonths])
+
+  const trendMax = Math.max(...trendData.map(d => d.value), 1)
 
   const editingAsset = editingId ? assets.find(a => a.id === editingId) : null
 
   async function saveAsset(form: AssetForm, id?: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const qty = parseFloat(String(form.quantity).replace(',', '.'))
-    const price = parseFloat(String(form.unit_price).replace(',', '.'))
-    if (isNaN(qty) || qty <= 0) { toast.error('Geçersiz miktar'); return }
-    if (isNaN(price) || price < 0) { toast.error('Geçersiz birim fiyat'); return }
+    let qty = 1
+    let price = 0
+    if (form.category !== 'Duran Varlık') {
+      qty = parseFloat(String(form.quantity).replace(',', '.'))
+      price = parseFloat(String(form.unit_price).replace(',', '.'))
+      if (isNaN(qty) || qty <= 0) { toast.error('Geçersiz miktar'); return }
+      if (isNaN(price) || price < 0) { toast.error('Geçersiz birim fiyat'); return }
+    }
     const payload = {
       name: form.name, category: form.category,
       quantity: qty, unit_price: price,
@@ -128,7 +184,7 @@ export default function VarliklarClient({ initialAssets }: Props) {
           <div style={{ fontSize: 36, fontWeight: 800, color: '#F59E0B' }}>
             ₺{summary.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{assets.length} varlık · {summary.byCat.length} kategori</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{finansalVarliklar.length} finansal varlık · {summary.byCat.length} kategori</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
           {summary.byCat.slice(0, 3).map(([cat, val]) => (
@@ -146,128 +202,212 @@ export default function VarliklarClient({ initialAssets }: Props) {
         </div>
       </div>
 
-      {assets.length === 0 ? (
+      {finansalVarliklar.length === 0 && duranVarliklar.length === 0 ? (
         <div className="card" style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary)' }}>
           <TrendingUp size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
           <p style={{ fontSize: 16, fontWeight: 500 }}>Henüz varlık eklenmedi</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>Altın, döviz, hisse, duran varlık gibi her şeyi ekleyebilirsin.</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>Altın, döviz, hisse veya fiziksel varlıklarını ekleyebilirsin.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Summary Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-            {summary.byCat.map(([cat, val]) => (
-              <div key={cat} className="card" style={{ padding: '14px 16px', borderLeft: `3px solid ${CAT_COLORS[cat] ?? '#6B7280'}` }}>
-                <div style={{ fontSize: 18, marginBottom: 4 }}>{CAT_EMOJI[cat]}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{cat}</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: CAT_COLORS[cat] ?? '#6B7280', marginTop: 2 }}>
-                  ₺{val.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+
+          {/* ── Finansal Varlıklar ── */}
+          {finansalVarliklar.length > 0 && (<>
+            {/* Summary Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+              {summary.byCat.map(([cat, val]) => (
+                <div key={cat} className="card" style={{ padding: '14px 16px', borderLeft: `3px solid ${CAT_COLORS[cat] ?? '#6B7280'}` }}>
+                  <div style={{ fontSize: 18, marginBottom: 4 }}>{CAT_EMOJI[cat]}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{cat}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: CAT_COLORS[cat] ?? '#6B7280', marginTop: 2 }}>
+                    ₺{val.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Category Filter */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {['Tümü', ...CATEGORIES.filter(c => assets.some(a => a.category === c))].map(cat => (
-              <button key={cat} onClick={() => setFilterCat(cat)} style={{
-                padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
-                backgroundColor: filterCat === cat ? (CAT_COLORS[cat] ?? 'var(--accent)') : 'var(--bg-card)',
-                color: filterCat === cat ? 'white' : 'var(--text-secondary)',
-              }}>
-                {cat === 'Tümü' ? cat : `${CAT_EMOJI[cat]} ${cat}`}
-              </button>
-            ))}
-          </div>
+            {/* Category Filter */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {['Tümü', ...CATEGORIES.filter(c => c !== 'Duran Varlık' && finansalVarliklar.some(a => a.category === c))].map(cat => (
+                <button key={cat} onClick={() => setFilterCat(cat)} style={{
+                  padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                  backgroundColor: filterCat === cat ? (CAT_COLORS[cat] ?? 'var(--accent)') : 'var(--bg-card)',
+                  color: filterCat === cat ? 'white' : 'var(--text-secondary)',
+                }}>
+                  {cat === 'Tümü' ? cat : `${CAT_EMOJI[cat]} ${cat}`}
+                </button>
+              ))}
+            </div>
 
-          {/* Asset List */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
-                  {['Varlık', 'Kategori', 'Miktar', 'Birim Fiyat', 'Toplam Değer', ''].map(h => (
-                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(a => {
-                  const total = Number(a.quantity) * Number(a.unit_price)
-                  const sym = currencySymbol[a.currency] ?? '₺'
-                  const color = CAT_COLORS[a.category] ?? '#6B7280'
-                  return (
-                    <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{a.name}</div>
-                        {a.purchase_date && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                          {format(new Date(a.purchase_date), 'd MMM yyyy', { locale: tr })}
-                        </div>}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 4, backgroundColor: `${color}20`, color, fontWeight: 600 }}>
-                          {CAT_EMOJI[a.category]} {a.category}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-primary)' }}>
-                        {a.category === 'Duran Varlık' ? '—' : Number(a.quantity).toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-primary)' }}>
-                        {a.category === 'Duran Varlık'
-                          ? '—'
-                          : sym === 'gr'
+            {/* Asset Table */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
+                    {['Varlık', 'Kategori', 'Miktar', 'Birim Fiyat', 'Toplam Değer', ''].map(h => (
+                      <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(a => {
+                    const total = Number(a.quantity) * Number(a.unit_price)
+                    const sym = currencySymbol[a.currency] ?? '₺'
+                    const color = CAT_COLORS[a.category] ?? '#6B7280'
+                    return (
+                      <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{a.name}</div>
+                          {a.purchase_date && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                            {format(new Date(a.purchase_date), 'd MMM yyyy', { locale: tr })}
+                          </div>}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 4, backgroundColor: `${color}20`, color, fontWeight: 600 }}>
+                            {CAT_EMOJI[a.category]} {a.category}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-primary)' }}>
+                          {Number(a.quantity).toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-primary)' }}>
+                          {sym === 'gr'
                             ? `${Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺/gr`
                             : `${sym}${Number(a.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color }}>
-                          {sym === 'gr'
-                            ? `₺${total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`
-                            : `${sym}${total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button onClick={() => { setEditingId(a.id); setShowModal(true) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
-                            <Pencil size={14} />
-                          </button>
-                          <button onClick={() => deleteAsset(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, opacity: 0.6 }}>
-                            <Trash2 size={14} />
-                          </button>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color }}>
+                            {sym === 'gr'
+                              ? `₺${total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`
+                              : `${sym}${total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button onClick={() => { setEditingId(a.id); setShowModal(true) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
+                              <Pencil size={14} />
+                            </button>
+                            <button onClick={() => deleteAsset(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, opacity: 0.6 }}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Category Bar Chart */}
+            <div className="card" style={{ padding: 20 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>Kategoriye Göre Dağılım</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {summary.byCat.map(([cat, val]) => {
+                  const color = CAT_COLORS[cat] ?? '#6B7280'
+                  const pct = Math.round((val / summary.grandTotal) * 100)
+                  return (
+                    <div key={cat}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color, display: 'inline-block' }} />
+                          <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{CAT_EMOJI[cat]} {cat}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{pct}%</span>
                         </div>
-                      </td>
-                    </tr>
+                        <span style={{ fontSize: 13, fontWeight: 600, color }}>₺{val.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}</span>
+                      </div>
+                      <div style={{ height: 6, backgroundColor: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${(val / summary.max) * 100}%`, backgroundColor: color, borderRadius: 3, transition: 'width 0.6s ease' }} />
+                      </div>
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+          </>)}
 
-          {/* Category Bar Chart */}
-          <div className="card" style={{ padding: 20 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>Kategoriye Göre Dağılım</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {summary.byCat.map(([cat, val]) => {
-                const color = CAT_COLORS[cat] ?? '#6B7280'
-                const totalAll = summary.byCat.reduce((s, [, v]) => s + v, 0)
-                const pct = Math.round((val / totalAll) * 100)
-                return (
-                  <div key={cat}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color, display: 'inline-block' }} />
-                        <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{CAT_EMOJI[cat]} {cat}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{pct}%</span>
-                      </div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color }}>₺{val.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}</span>
+          {/* ── Portföy Trend Grafiği ── */}
+          {snapshots.length > 0 && (
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <BarChart3 size={16} color="#F59E0B" />
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Portföy Trendi</p>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {([6, 12] as const).map(n => (
+                    <button key={n} onClick={() => setTrendMonths(n)} style={{
+                      padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: 'none', fontWeight: 600,
+                      backgroundColor: trendMonths === n ? '#F59E0B' : 'var(--bg-surface)',
+                      color: trendMonths === n ? 'white' : 'var(--text-secondary)',
+                    }}>{n} ay</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
+                {trendData.map((d, i) => {
+                  const pct = trendMax > 0 ? (d.value / trendMax) * 100 : 0
+                  const isCurrentMonth = isSameMonth(d.month, new Date())
+                  const prev = trendData[i - 1]
+                  const change = prev && prev.value > 0 ? ((d.value - prev.value) / prev.value) * 100 : null
+                  return (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
+                      {d.value > 0 && change !== null && (
+                        <span style={{ fontSize: 9, fontWeight: 600, color: change >= 0 ? '#22C55E' : '#EF4444', whiteSpace: 'nowrap' }}>
+                          {change >= 0 ? '+' : ''}{Math.round(change)}%
+                        </span>
+                      )}
+                      <div
+                        title={d.value > 0 ? `₺${d.value.toLocaleString('tr-TR')}` : 'Veri yok'}
+                        style={{
+                          width: '100%', height: `${Math.max(pct, d.value > 0 ? 4 : 2)}%`,
+                          backgroundColor: d.value === 0 ? 'var(--border)' : isCurrentMonth ? '#F59E0B' : 'rgba(245,158,11,0.5)',
+                          borderRadius: '3px 3px 0 0', cursor: 'default', transition: 'height 0.6s ease',
+                          minHeight: 2,
+                        }}
+                      />
+                      <span style={{ fontSize: 9, color: 'var(--text-secondary)', textAlign: 'center', whiteSpace: 'nowrap' }}>{d.label}</span>
                     </div>
-                    <div style={{ height: 6, backgroundColor: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${(val / summary.max) * 100}%`, backgroundColor: color, borderRadius: 3, transition: 'width 0.6s ease' }} />
+                  )
+                })}
+              </div>
+              {trendData.some(d => d.value === 0) && (
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, textAlign: 'center' }}>
+                  Boş aylar için henüz veri yok — her giriş yaptığında otomatik kaydedilir.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Duran Varlıklar ── */}
+          {duranVarliklar.length > 0 && (
+            <div className="card" style={{ padding: 20, borderLeft: '3px solid #D97706' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+                💎 Duran Varlıklar ({duranVarliklar.length})
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {duranVarliklar.map((a, i) => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < duranVarliklar.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <span style={{ fontSize: 16, color: '#D97706', flexShrink: 0 }}>•</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{a.name}</span>
+                      {a.notes && <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 8 }}>{a.notes}</span>}
+                      {a.purchase_date && <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>· {format(new Date(a.purchase_date), 'd MMM yyyy', { locale: tr })}</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button onClick={() => { setEditingId(a.id); setShowModal(true) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => deleteAsset(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, opacity: 0.6 }}>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
-                )
-              })}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
         </div>
       )}
 
@@ -309,8 +449,10 @@ function AssetModal({ initial, onClose, onSave }: {
 
   async function handleSave() {
     if (!form.name.trim()) { toast.error('Varlık adı zorunludur'); return }
-    if (!form.quantity) { toast.error('Miktar zorunludur'); return }
-    if (!form.unit_price) { toast.error('Birim fiyat zorunludur'); return }
+    if (form.category !== 'Duran Varlık') {
+      if (!form.quantity) { toast.error('Miktar zorunludur'); return }
+      if (!form.unit_price) { toast.error('Birim fiyat zorunludur'); return }
+    }
     setSaving(true)
     await onSave(form)
     setSaving(false)
@@ -351,13 +493,7 @@ function AssetModal({ initial, onClose, onSave }: {
             </div>
           </div>
 
-          {form.category === 'Duran Varlık' ? (
-            <div>
-              <label style={ls}>Tahmini Değer (₺) *</label>
-              <input type="text" inputMode="decimal" className="input" placeholder="0.00" value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value, quantity: '1' }))} />
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Miktar otomatik 1 olarak ayarlanır</div>
-            </div>
-          ) : (
+          {form.category !== 'Duran Varlık' && (<>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={ls}>Miktar *</label>
@@ -368,35 +504,34 @@ function AssetModal({ initial, onClose, onSave }: {
                 <input type="text" inputMode="decimal" className="input" placeholder="0.00" value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))} />
               </div>
             </div>
-          )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={ls}>Para Birimi</label>
-              <select className="input" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
-                <option value="TRY">TRY ₺</option>
-                <option value="USD">USD $</option>
-                <option value="EUR">EUR €</option>
-                {form.category !== 'Duran Varlık' && <option value="GR">Gram (gr)</option>}
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={ls}>Para Birimi</label>
+                <select className="input" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+                  <option value="TRY">TRY ₺</option>
+                  <option value="USD">USD $</option>
+                  <option value="EUR">EUR €</option>
+                  <option value="GR">Gram (gr)</option>
+                </select>
+              </div>
+              <div>
+                <label style={ls}>Alış Tarihi</label>
+                <input type="date" className="input" value={form.purchase_date} onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))} />
+              </div>
             </div>
-            <div>
-              <label style={ls}>Alış Tarihi</label>
-              <input type="date" className="input" value={form.purchase_date} onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))} />
-            </div>
-          </div>
 
-          {/* Computed total preview */}
-          {form.quantity && form.unit_price && (
-            <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-surface)', borderRadius: 8, fontSize: 14 }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Toplam Değer: </span>
-              <span style={{ fontWeight: 700, color: '#F59E0B' }}>
-                {form.currency === 'GR' ? '₺' : (currencySymbol[form.currency] ?? '₺')}
-                {(parseFloat(form.quantity.replace(',', '.') || '0') * parseFloat(form.unit_price.replace(',', '.') || '0')).toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
-                {form.currency === 'GR' && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 4 }}>({form.quantity} gr × {form.unit_price} ₺/gr)</span>}
-              </span>
-            </div>
-          )}
+            {form.quantity && form.unit_price && (
+              <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-surface)', borderRadius: 8, fontSize: 14 }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Toplam Değer: </span>
+                <span style={{ fontWeight: 700, color: '#F59E0B' }}>
+                  {form.currency === 'GR' ? '₺' : (currencySymbol[form.currency] ?? '₺')}
+                  {(parseFloat(form.quantity.replace(',', '.') || '0') * parseFloat(form.unit_price.replace(',', '.') || '0')).toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+                  {form.currency === 'GR' && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 4 }}>({form.quantity} gr × {form.unit_price} ₺/gr)</span>}
+                </span>
+              </div>
+            )}
+          </>)}
 
           <div>
             <label style={ls}>Not (opsiyonel)</label>

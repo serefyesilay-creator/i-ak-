@@ -36,8 +36,8 @@ cd "$PROJECT_DIR"
 # ── 1. Staged dosya kontrolü ────────────────────────────────
 echo -e "\n${BOLD}▶ Staged Dosya Güvenliği${NC}"
 
-# .env ve credentials commit edilmesin
-staged_danger=$(git diff --cached --name-only | grep -E "\.env|credentials\.env|\.env\.local|\.env\.production" || true)
+# .env ve credentials commit edilmesin (silme işlemleri hariç)
+staged_danger=$(git diff --cached --name-status | grep -E "^[AM]" | awk '{print $2}' | grep -E "\.env|credentials\.env|\.env\.local|\.env\.production" || true)
 if [[ -n "$staged_danger" ]]; then
   echo -e "  ${RED}✗ Tehlikeli dosyalar staged!${NC}"
   echo "$staged_danger" | while read -r f; do

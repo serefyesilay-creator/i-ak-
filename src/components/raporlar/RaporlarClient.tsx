@@ -1,11 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
     BarChart3, TrendingUp, TrendingDown, CheckCircle2,
     AlertCircle, Wallet, FolderKanban, Target, Landmark,
 } from 'lucide-react'
-import { format, subMonths, isSameMonth, isBefore, startOfMonth } from 'date-fns'
+import { format, subMonths, isSameMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
 
 interface TaskItem { id: string; title: string; status: string; priority: string; due_date: string | null; created_at: string; project_id: string | null }
@@ -14,6 +14,7 @@ interface InvoiceItem { id: string; amount: number; currency: string; status: st
 interface ClientItem { id: string; name: string; company: string | null }
 interface ExpenseItem { id: string; amount: number; currency: string; category: string; expense_date: string }
 interface AssetItem { id: string; name: string; category: string; quantity: number; unit_price: number; currency: string }
+interface SnapshotItem { snapshot_date: string; total_value: number; breakdown: Record<string, number> }
 
 interface Props {
     tasks: TaskItem[]
@@ -22,6 +23,7 @@ interface Props {
     clients: ClientItem[]
     expenses: ExpenseItem[]
     assets: AssetItem[]
+    assetSnapshots: SnapshotItem[]
 }
 
 const priorityColors: Record<string, string> = { low: '#22C55E', medium: '#F59E0B', high: '#EF4444', urgent: '#DC2626' }
@@ -45,8 +47,9 @@ const ASSET_EMOJI: Record<string, string> = {
     'Gayrimenkul': '🏠', 'Tahvil': '📄', 'Duran Varlık': '💎', 'Diğer': '💼',
 }
 
-export default function RaporlarClient({ tasks, projects, invoices, clients, expenses, assets }: Props) {
+export default function RaporlarClient({ tasks, projects, invoices, clients, expenses, assets, assetSnapshots }: Props) {
     const now = new Date()
+    const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
 
     // ── Task Stats ──
     const taskStats = useMemo(() => {
@@ -126,11 +129,29 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
     const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
     const netBalance = paidRevenue - totalExpense
 
+    // ── Asset Trend (monthly snapshots) ──
+    const trendData = useMemo(() => {
+        const months: { label: string; value: number; month: Date }[] = []
+        for (let i = trendMonths - 1; i >= 0; i--) {
+            const m = startOfMonth(subMonths(now, i))
+            const mEnd = endOfMonth(m)
+            const mSnaps = assetSnapshots.filter(s => {
+                const d = new Date(s.snapshot_date)
+                return d >= m && d <= mEnd
+            })
+            const latest = mSnaps[mSnaps.length - 1]
+            months.push({ label: format(m, 'MMM yy', { locale: tr }), value: latest?.total_value ?? 0, month: m })
+        }
+        return months
+    }, [assetSnapshots, trendMonths])
+
+    const trendMax = Math.max(...trendData.map(d => d.value), 1)
+
     // ── Asset Stats ──
     const assetStats = useMemo(() => {
         const byCat: Record<string, number> = {}
         let total = 0
-        assets.forEach(a => {
+        assets.filter(a => a.category !== 'Duran Varlık').forEach(a => {
             const val = Number(a.quantity) * Number(a.unit_price)
             byCat[a.category] = (byCat[a.category] ?? 0) + val
             total += val
@@ -383,6 +404,60 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
                     </div>
                 )}
             </div>
+
+            {/* ── Asset Trend Chart ── */}
+            {assetSnapshots.length > 0 && (
+                <div className="card" style={{ padding: 20, marginTop: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <h3 style={sectionTitle}>
+                            <BarChart3 size={16} style={{ marginRight: 6 }} />
+                            Portföy Trendi
+                        </h3>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            {([6, 12] as const).map(n => (
+                                <button key={n} onClick={() => setTrendMonths(n)} style={{
+                                    padding: '3px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: 'none', fontWeight: 600,
+                                    backgroundColor: trendMonths === n ? '#F59E0B' : 'var(--bg-surface)',
+                                    color: trendMonths === n ? 'white' : 'var(--text-secondary)',
+                                }}>{n} ay</button>
+                            ))}
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 130 }}>
+                        {trendData.map((d, i) => {
+                            const pct = trendMax > 0 ? (d.value / trendMax) * 100 : 0
+                            const isCurrentMonth = isSameMonth(d.month, now)
+                            const prev = trendData[i - 1]
+                            const change = prev && prev.value > 0 ? ((d.value - prev.value) / prev.value) * 100 : null
+                            return (
+                                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%', justifyContent: 'flex-end' }}>
+                                    {d.value > 0 && change !== null && (
+                                        <span style={{ fontSize: 9, fontWeight: 700, color: change >= 0 ? '#22C55E' : '#EF4444', whiteSpace: 'nowrap' }}>
+                                            {change >= 0 ? '+' : ''}{Math.round(change)}%
+                                        </span>
+                                    )}
+                                    <div
+                                        title={d.value > 0 ? `₺${d.value.toLocaleString('tr-TR')}` : 'Veri yok'}
+                                        style={{
+                                            width: '100%',
+                                            height: `${Math.max(pct, d.value > 0 ? 4 : 1)}%`,
+                                            backgroundColor: d.value === 0 ? 'var(--border)' : isCurrentMonth ? '#F59E0B' : 'rgba(245,158,11,0.5)',
+                                            borderRadius: '3px 3px 0 0',
+                                            minHeight: 2, transition: 'height 0.6s ease',
+                                        }}
+                                    />
+                                    <span style={{ fontSize: 9, color: 'var(--text-secondary)', textAlign: 'center', whiteSpace: 'nowrap' }}>{d.label}</span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                    {trendData.some(d => d.value === 0) && (
+                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, textAlign: 'center' }}>
+                            Boş aylar için veri yok — Varlıklar sayfasını her ziyarette otomatik kaydedilir.
+                        </p>
+                    )}
+                </div>
+            )}
         </div>
     )
 }

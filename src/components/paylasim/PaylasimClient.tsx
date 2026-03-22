@@ -61,11 +61,13 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
     title: string
     platform: 'instagram' | 'youtube'
     status: 'planned' | 'ready' | 'published' | 'cancelled'
+    isShared: boolean
   }>({
     clientId: '',
     title: '',
     platform: 'instagram',
     status: 'planned',
+    isShared: false,
   })
 
   const weeks = getWeeksOf2026()
@@ -134,6 +136,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
       title: '',
       platform: 'instagram',
       status: 'planned',
+      isShared: false,
     })
     setShareModal({ isOpen: true, date: format(date, 'yyyy-MM-dd') })
   }
@@ -144,6 +147,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
       title: share.title || '',
       platform: share.platform,
       status: share.status,
+      isShared: share.is_shared,
     })
     setShareModal({ isOpen: true, share })
   }
@@ -160,6 +164,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
       title: formData.title || null,
       platform: formData.platform,
       status: formData.status,
+      is_shared: formData.isShared,
       share_date: shareModal.share?.share_date || shareModal.date,
     }
 
@@ -312,31 +317,45 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                         onClick={() => openEditModal(share)}
                         style={{
                           backgroundColor: getClientColor(share.client_id),
-                          opacity: 0.15,
+                          opacity: share.is_shared ? 0.3 : 0.15,
                           borderLeft: `3px solid ${getClientColor(share.client_id)}`,
                           padding: 8,
                           borderRadius: 6,
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
+                          position: 'relative',
                         }}
                         onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLElement).style.opacity = '0.25'
+                          (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.4' : '0.25'
                         }}
                         onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLElement).style.opacity = '0.15'
+                          (e.currentTarget as HTMLElement).style.opacity = share.is_shared ? '0.3' : '0.15'
                         }}
                       >
-                        <p style={{
-                          color: 'var(--text-primary)',
-                          fontSize: 12,
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          textDecoration: share.status === 'cancelled' ? 'line-through' : 'none',
-                        }}>
-                          {client?.name}
-                        </p>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 4 }}>
+                          <p style={{
+                            color: 'var(--text-primary)',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            flex: 1,
+                            textDecoration: share.status === 'cancelled' ? 'line-through' : 'none',
+                          }}>
+                            {client?.name}
+                          </p>
+                          {share.is_shared && (
+                            <span style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: '#22C55E',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              ✓
+                            </span>
+                          )}
+                        </div>
                         <p style={{
                           color: 'var(--text-secondary)',
                           fontSize: 11,
@@ -537,6 +556,23 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                   <option value="published">Yayınlandı</option>
                   <option value="cancelled">İptal</option>
                 </select>
+              </div>
+
+              {/* Is Shared Checkbox */}
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isShared}
+                    onChange={(e) => setFormData(p => ({ ...p, isShared: e.target.checked }))}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <span style={{ color: 'var(--text-primary)', fontSize: 14 }}>Paylaşıldı</span>
+                </label>
               </div>
 
               {/* Date */}
