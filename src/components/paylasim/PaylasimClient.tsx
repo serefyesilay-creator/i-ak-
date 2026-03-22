@@ -363,31 +363,36 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                           }}
                         >
                           <p style={{
-                            color: 'var(--text-primary)',
+                            color: '#1F2937',
                             fontSize: 12,
-                            fontWeight: 500,
+                            fontWeight: 700,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             textDecoration: share.status === 'cancelled' ? 'line-through' : 'none',
+                            textShadow: '0 1px 1px rgba(255,255,255,0.3)',
                           }}>
                             {client?.name}
                           </p>
                           <p style={{
-                            color: 'var(--text-secondary)',
+                            color: '#374151',
                             fontSize: 11,
+                            fontWeight: 600,
                             marginTop: 2,
+                            textShadow: '0 1px 1px rgba(255,255,255,0.2)',
                           }}>
                             {share.platform} • {share.status}
                           </p>
                           {share.title && (
                             <p style={{
-                              color: 'var(--text-secondary)',
+                              color: '#374151',
                               fontSize: 10,
+                              fontWeight: 600,
                               marginTop: 4,
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
+                              textShadow: '0 1px 1px rgba(255,255,255,0.2)',
                             }}>
                               {share.title}
                             </p>
