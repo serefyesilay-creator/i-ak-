@@ -11,12 +11,14 @@ import {
   BarChart3,
   TrendingDown,
   Landmark,
+  Calendar,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Ana Sayfa' },
   { href: '/gorevler', icon: CheckSquare, label: 'Görevler' },
   { href: '/projeler', icon: FolderKanban, label: 'Projeler' },
+  { href: '/paylasim', icon: Calendar, label: 'Paylaşım' },
   { href: '/notlar', icon: FileText, label: 'Notlar' },
   { href: '/alacaklar', icon: Wallet, label: 'Alacaklar' },
   { href: '/giderler', icon: TrendingDown, label: 'Giderler' },

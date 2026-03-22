@@ -4,6 +4,19 @@ export type RecurrenceType = 'daily' | 'weekly' | 'monthly'
 export type ProjectStatus = 'active' | 'on_hold' | 'completed' | 'archived'
 export type InvoiceStatus = 'unpaid' | 'partial' | 'paid' | 'overdue'
 export type Currency = 'TRY' | 'USD' | 'EUR'
+export type ContentSharePlatform = 'instagram' | 'youtube'
+export type ContentShareStatus = 'planned' | 'ready' | 'published' | 'cancelled'
+
+export interface ContentShare {
+  id: string
+  user_id: string
+  client_id: string
+  share_date: string
+  title: string | null
+  platform: ContentSharePlatform
+  status: ContentShareStatus
+  created_at: string
+}
 
 export interface Task {
   id: string
@@ -121,5 +134,14 @@ export interface Asset {
   currency: Currency
   purchase_date: string | null
   notes: string | null
+  created_at: string
+}
+
+export interface AssetSnapshot {
+  id: string
+  user_id: string
+  snapshot_date: string
+  total_value: number
+  breakdown: Record<string, number>
   created_at: string
 }

@@ -141,6 +141,22 @@ CREATE TABLE payments (
 );
 
 -- ============================================
+-- CONTENT SHARES
+-- ============================================
+CREATE TABLE content_shares (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  share_date DATE NOT NULL,
+  title TEXT,
+  platform TEXT DEFAULT 'instagram'
+    CHECK (platform IN ('instagram', 'youtube')),
+  status TEXT DEFAULT 'planned'
+    CHECK (status IN ('planned', 'ready', 'published', 'cancelled')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
 -- TRIGGERS — updated_at
 -- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -171,6 +187,7 @@ ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE content_shares ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies — kullanıcı yalnızca kendi verilerini görebilir
 CREATE POLICY "users_own_projects" ON projects
@@ -200,6 +217,9 @@ CREATE POLICY "users_own_invoices" ON invoices
 CREATE POLICY "users_own_payments" ON payments
   FOR ALL USING (auth.uid() = user_id);
 
+CREATE POLICY "users_own_content_shares" ON content_shares
+  FOR ALL USING (auth.uid() = user_id);
+
 -- ============================================
 -- INDEXES
 -- ============================================
@@ -209,3 +229,4 @@ CREATE INDEX idx_tasks_project ON tasks(project_id);
 CREATE INDEX idx_notes_user ON notes(user_id);
 CREATE INDEX idx_invoices_client ON invoices(client_id);
 CREATE INDEX idx_invoices_status ON invoices(status);
+CREATE INDEX idx_content_shares_date ON content_shares(user_id, share_date);
