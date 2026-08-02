@@ -11,6 +11,7 @@ import {
 import { format, addMonths, subMonths, startOfMonth, isSameMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { Client, Invoice, Payment } from '@/types'
+import NoteButton from '@/components/ui/NoteButton'
 
 interface Props {
   initialClients: Client[]
@@ -34,6 +35,7 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
   const [showInvoiceModal, setShowInvoiceModal] = useState<string | null>(null)
   const [showPaymentModal, setShowPaymentModal] = useState<Invoice | null>(null)
   const [userId, setUserId] = useState<string>('')
+  const [hoverInvId, setHoverInvId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -139,6 +141,13 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
     setInvoices(prev => prev.map(i => i.id === updated.id ? updated : i))
   }
 
+  async function updateInvoiceNote(id: string, notes: string | null) {
+    const { error } = await supabase.from('invoices').update({ notes }).eq('id', id)
+    if (error) { toast.error('Not kaydedilemedi'); return }
+    setInvoices(prev => prev.map(i => i.id === id ? { ...i, notes } : i))
+    toast.success(notes ? 'Not kaydedildi' : 'Not silindi')
+  }
+
   return (
     <div>
       {/* Header */}
@@ -230,6 +239,8 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
                   return (
                     <div
                       key={inv.id}
+                      onMouseEnter={() => setHoverInvId(inv.id)}
+                      onMouseLeave={() => setHoverInvId(null)}
                       style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 8px', borderBottom: '1px solid var(--border)' }}
                     >
                       {/* Status Icon — tıkla: ödendi/bekliyor toggle */}
@@ -273,6 +284,9 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
                       <div style={{ fontSize: 15, fontWeight: 700, color: inv.status === 'paid' ? '#22C55E' : sc.color, whiteSpace: 'nowrap' }}>
                         {sym}{Number(inv.amount).toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
                       </div>
+
+                      {/* Not */}
+                      <NoteButton note={inv.notes} onSave={n => updateInvoiceNote(inv.id, n)} showWhenEmpty={hoverInvId === inv.id} />
 
                       {/* Payment Button */}
                       <button

@@ -8,6 +8,7 @@ import { Plus, TrendingDown, ChevronLeft, ChevronRight, Trash2, X, CheckCircle2,
 import { format, addMonths, subMonths, startOfMonth, isSameMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { Expense } from '@/types'
+import NoteButton from '@/components/ui/NoteButton'
 
 interface Props {
   initialExpenses: Expense[]
@@ -38,6 +39,7 @@ export default function GiderlerClient({ initialExpenses }: Props) {
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
   const [showModal, setShowModal] = useState(false)
   const [userId, setUserId] = useState<string>('')
+  const [hoverId, setHoverId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -108,6 +110,13 @@ export default function GiderlerClient({ initialExpenses }: Props) {
     if (error) { toast.error('Silinemedi'); return }
     setExpenses(prev => prev.filter(e => e.id !== id))
     toast.success('Gider silindi')
+  }
+
+  async function updateNote(id: string, notes: string | null) {
+    const { error } = await supabase.from('expenses').update({ notes }).eq('id', id)
+    if (error) { toast.error('Not kaydedilemedi'); return }
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, notes } : e))
+    toast.success(notes ? 'Not kaydedildi' : 'Not silindi')
   }
 
   const maxCat = monthSummary.byCategory[0]?.[1] ?? 1
@@ -204,7 +213,7 @@ export default function GiderlerClient({ initialExpenses }: Props) {
                 const color = CATEGORY_COLORS[e.category] ?? '#6B7280'
                 const sym = currencySymbol[e.currency] ?? '₺'
                 return (
-                  <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid var(--border)', opacity: e.is_paid ? 0.55 : 1 }}>
+                  <div key={e.id} onMouseEnter={() => setHoverId(e.id)} onMouseLeave={() => setHoverId(null)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid var(--border)', opacity: e.is_paid ? 0.55 : 1 }}>
                     <button onClick={() => togglePaid(e)} title={e.is_paid ? 'Ödendi' : 'Ödenmedi'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, color: e.is_paid ? '#22C55E' : 'var(--text-secondary)', display: 'flex' }}>
                       {e.is_paid ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                     </button>
@@ -219,6 +228,7 @@ export default function GiderlerClient({ initialExpenses }: Props) {
                     <span style={{ fontSize: 15, fontWeight: 700, color: e.is_paid ? '#22C55E' : '#EF4444', whiteSpace: 'nowrap' }}>
                       {sym}{Number(e.amount).toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
                     </span>
+                    <NoteButton note={e.notes} onSave={n => updateNote(e.id, n)} showWhenEmpty={hoverId === e.id} />
                     <button onClick={() => deleteExpense(e.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, opacity: 0.4 }}>
                       <Trash2 size={14} />
                     </button>
