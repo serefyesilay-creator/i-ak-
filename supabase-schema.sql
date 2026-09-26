@@ -158,6 +158,18 @@ CREATE TABLE content_shares (
 );
 
 -- ============================================
+-- TIME ENTRIES — zaman takibi
+-- ============================================
+CREATE TABLE time_entries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ended_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
 -- TRIGGERS — updated_at
 -- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -189,6 +201,7 @@ ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE content_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE time_entries ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies — kullanıcı yalnızca kendi verilerini görebilir
 CREATE POLICY "users_own_projects" ON projects
@@ -221,6 +234,9 @@ CREATE POLICY "users_own_payments" ON payments
 CREATE POLICY "users_own_content_shares" ON content_shares
   FOR ALL USING (auth.uid() = user_id);
 
+CREATE POLICY "users_own_time_entries" ON time_entries
+  FOR ALL USING (auth.uid() = user_id);
+
 -- ============================================
 -- INDEXES
 -- ============================================
@@ -231,3 +247,6 @@ CREATE INDEX idx_notes_user ON notes(user_id);
 CREATE INDEX idx_invoices_client ON invoices(client_id);
 CREATE INDEX idx_invoices_status ON invoices(status);
 CREATE INDEX idx_content_shares_date ON content_shares(user_id, share_date);
+CREATE INDEX idx_time_entries_user ON time_entries(user_id);
+CREATE INDEX idx_time_entries_client ON time_entries(client_id);
+CREATE INDEX idx_time_entries_started ON time_entries(started_at);

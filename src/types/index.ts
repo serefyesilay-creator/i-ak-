@@ -104,6 +104,14 @@ export interface Invoice {
   created_at: string
 }
 
+export interface TimeEntry {
+  id: string
+  client_id: string
+  started_at: string
+  ended_at: string | null
+  created_at: string
+}
+
 export interface Expense {
   id: string
   title: string

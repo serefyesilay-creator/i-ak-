@@ -11,11 +11,13 @@ import {
   TrendingDown,
   Landmark,
   Calendar,
+  Timer,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Ana Sayfa' },
   { href: '/gorevler', icon: CheckSquare, label: 'Görevler' },
+  { href: '/zaman-takibi', icon: Timer, label: 'Zaman' },
   { href: '/projeler', icon: FolderKanban, label: 'Projeler' },
   { href: '/paylasim', icon: Calendar, label: 'Paylaşım' },
   { href: '/alacaklar', icon: Wallet, label: 'Alacaklar' },

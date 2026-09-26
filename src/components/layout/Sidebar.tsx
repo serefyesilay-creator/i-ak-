@@ -12,6 +12,7 @@ import {
   TrendingDown,
   Landmark,
   Calendar,
+  Timer,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/gorevler', icon: CheckSquare, label: 'Görevler' },
   { href: '/projeler', icon: FolderKanban, label: 'Projeler' },
   { href: '/paylasim', icon: Calendar, label: 'Paylaşım' },
+  { href: '/zaman-takibi', icon: Timer, label: 'Zaman Takibi' },
   { href: '/alacaklar', icon: Wallet, label: 'Alacaklar' },
   { href: '/giderler', icon: TrendingDown, label: 'Giderler' },
   { href: '/varliklar', icon: Landmark, label: 'Varlıklar' },
