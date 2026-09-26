@@ -73,8 +73,9 @@ current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 if [[ "$current_branch" == "main" || "$current_branch" == "master" ]]; then
   echo -e "  ${YELLOW}⚠ Doğrudan main/master'a push!${NC}"
   echo -e "  ${YELLOW}  Devam etmek istiyor musunuz? (y/N)${NC}"
-  read -r -n 1 response
-  echo ""
+  read -r response < /dev/tty
+  response="${response//$'\r'/}"
+  response="${response//[[:space:]]/}"
   if [[ "$response" != "y" && "$response" != "Y" ]]; then
     echo -e "  ${YELLOW}Push iptal edildi.${NC}"
     exit 1
@@ -99,7 +100,7 @@ fi
 # ── 3. ESLint ───────────────────────────────────────────────
 echo -e "\n${BOLD}▶ ESLint Kontrolü${NC}"
 
-if npx next lint --quiet 2>/tmp/push_lint; then
+if npx eslint . --quiet 2>/tmp/push_lint; then
   echo -e "  ${GREEN}✓ ESLint — hata yok${NC}"
 else
   echo -e "  ${RED}✗ ESLint hataları:${NC}"
