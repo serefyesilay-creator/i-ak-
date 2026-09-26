@@ -46,13 +46,16 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
   async function startTracking(clientId: string) {
     if (running?.client_id === clientId) return
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Oturum bulunamadı'); return }
+
     if (running) {
       await supabase.from('time_entries').update({ ended_at: new Date().toISOString() }).eq('id', running.id)
     }
 
     const { data, error } = await supabase
       .from('time_entries')
-      .insert({ client_id: clientId, started_at: new Date().toISOString() })
+      .insert({ user_id: user.id, client_id: clientId, started_at: new Date().toISOString() })
       .select()
       .single()
 
@@ -82,13 +85,16 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
     if (!manualClientId) { toast.error('Müşteri seç'); return }
     if (totalMinutes <= 0) { toast.error('Süre gir'); return }
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Oturum bulunamadı'); return }
+
     setSavingManual(true)
     const startedAt = new Date(`${manualDate}T12:00:00`)
     const endedAt = new Date(startedAt.getTime() + totalMinutes * 60 * 1000)
 
     const { data, error } = await supabase
       .from('time_entries')
-      .insert({ client_id: manualClientId, started_at: startedAt.toISOString(), ended_at: endedAt.toISOString() })
+      .insert({ user_id: user.id, client_id: manualClientId, started_at: startedAt.toISOString(), ended_at: endedAt.toISOString() })
       .select()
       .single()
 
