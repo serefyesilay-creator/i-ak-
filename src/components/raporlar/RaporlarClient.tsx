@@ -169,7 +169,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
             </div>
 
             {/* ── Summary Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
                 <SummaryCard icon={<Target size={20} color="#6366F1" />} label="Toplam Görev" value={String(taskStats.total)} accent="#6366F1" />
                 <SummaryCard icon={<CheckCircle2 size={20} color="#22C55E" />} label="Tamamlanan" value={`${taskStats.completionRate}%`} accent="#22C55E" />
                 <SummaryCard icon={<Wallet size={20} color="#F59E0B" />} label="Toplam Gelir" value={`₺${totalRevenue.toLocaleString('tr-TR')}`} accent="#F59E0B" />

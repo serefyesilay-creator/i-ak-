@@ -251,7 +251,7 @@ export default function GorevlerClient({ initialTasks, projects }: Props) {
       )}
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'Yapılacak', value: stats.todo, color: '#6366F1' },
           { label: 'Devam Eden', value: stats.inProgress, color: '#F59E0B' },

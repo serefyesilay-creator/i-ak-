@@ -179,7 +179,7 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
 
       {/* Month Summary */}
       {monthSummary.count > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
           <div className="card" style={{ padding: '12px 16px', textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>
               ₺{monthSummary.total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
