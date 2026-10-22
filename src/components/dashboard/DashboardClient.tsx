@@ -230,10 +230,11 @@ export default function DashboardClient({
     })
   }, [projects, tasks])
 
-  // Sadece bu ay kesilen (issue_date) bekleyen faturalar
+  // Alacaklar sayfasıyla aynı mantık: vadesi (due_date) bu ay olan bekleyen faturalar
   const monthInvoices = useMemo(
     () => invoices.filter(inv => {
-      const d = new Date(inv.issue_date)
+      if (!inv.due_date) return false
+      const d = new Date(inv.due_date)
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
     }),
     [invoices, now],
@@ -446,7 +447,7 @@ export default function DashboardClient({
           <section className="panel">
             <PanelHead title={`${format(now, 'MMMM', { locale: tr })} alacakları`} href="/alacaklar" />
             {invoiceTotals.length === 0 ? (
-              <div className="panel-empty">Bu ay kesilmiş bekleyen alacak yok.</div>
+              <div className="panel-empty">Bu ay vadesi gelen bekleyen alacak yok.</div>
             ) : (
               <>
                 <div className="panel-body" style={{ paddingBottom: 12 }}>

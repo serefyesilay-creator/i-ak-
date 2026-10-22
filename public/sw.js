@@ -1,5 +1,5 @@
-const CACHE_NAME = 'is-akisi-v2'
-const STATIC_CACHE = 'is-akisi-static-v2'
+const CACHE_NAME = 'is-akisi-v3'
+const STATIC_CACHE = 'is-akisi-static-v3'
 
 // Install: pre-cache app shell
 self.addEventListener('install', (event) => {
@@ -48,19 +48,20 @@ self.addEventListener('fetch', (event) => {
         return
     }
 
-    // Navigation & API routes → Stale-While-Revalidate
+    // Sayfalar → Network-First: veriler (alacak, görev) her açılışta güncel gelir.
+    // Önbellek sadece internet yokken yedek olarak kullanılır.
     event.respondWith(
-        caches.open(CACHE_NAME).then(async (cache) => {
-            const cached = await cache.match(event.request)
-            const networkFetch = fetch(event.request).then((response) => {
+        fetch(event.request)
+            .then((response) => {
                 if (response.ok && event.request.mode === 'navigate') {
-                    cache.put(event.request, response.clone())
+                    const copy = response.clone()
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
                 }
                 return response
-            }).catch(() => cached || new Response('Offline', { status: 503 }))
-
-            // Return cache immediately if available, update in background
-            return cached || networkFetch
-        })
+            })
+            .catch(async () => {
+                const cached = await caches.match(event.request)
+                return cached || new Response('Offline', { status: 503 })
+            })
     )
 })
