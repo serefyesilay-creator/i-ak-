@@ -4,8 +4,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRealtime } from '@/hooks/useRealtime'
 import toast from 'react-hot-toast'
-import { Plus, Filter, Search, X, CheckCircle2, Circle, Clock, Ban, Trash2, ArrowRight } from 'lucide-react'
-import { format } from 'date-fns'
+import { Plus, Filter, Search, X, CheckCircle2, Check, Repeat, Trash2, ArrowRight } from 'lucide-react'
+import { format, startOfDay, addDays } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { Task } from '@/types'
 import GorevModal from './GorevModal'
@@ -16,17 +16,36 @@ interface Props {
 }
 
 const priorityConfig = {
-  low: { label: 'Düşük', color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
-  medium: { label: 'Orta', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
-  high: { label: 'Yüksek', color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
-  urgent: { label: 'Acil', color: '#EF4444', bg: 'rgba(239,68,68,0.2)', animate: true },
+  low: { label: 'Düşük', color: '#4ADE80' },
+  medium: { label: 'Orta', color: '#FBBF24' },
+  high: { label: 'Yüksek', color: '#F87171' },
+  urgent: { label: 'Acil', color: '#F87171' },
 }
 
-const statusIcon = {
-  todo: <Circle size={18} color="#888" />,
-  in_progress: <Clock size={18} color="#F59E0B" />,
-  done: <CheckCircle2 size={18} color="#22C55E" />,
-  cancelled: <Ban size={18} color="#888" />,
+// Liste, teslim tarihine göre bu sırayla gruplanır
+const BUCKETS = [
+  { key: 'overdue', label: 'Gecikmiş', color: '#F87171' },
+  { key: 'today', label: 'Bugün', color: 'var(--mark)' },
+  { key: 'tomorrow', label: 'Yarın', color: 'var(--accent-soft)' },
+  { key: 'week', label: 'Bu hafta', color: 'var(--accent-soft)' },
+  { key: 'later', label: 'Daha sonra', color: 'var(--border-strong)' },
+  { key: 'nodate', label: 'Tarihsiz', color: 'var(--border-strong)' },
+  { key: 'done', label: 'Tamamlanan', color: '#4ADE80' },
+  { key: 'cancelled', label: 'İptal', color: 'var(--border-strong)' },
+] as const
+
+type BucketKey = (typeof BUCKETS)[number]['key']
+
+function bucketOf(task: Task, todayStart: Date): BucketKey {
+  if (task.status === 'cancelled') return 'cancelled'
+  if (task.status === 'done') return 'done'
+  if (!task.due_date) return 'nodate'
+  const d = new Date(task.due_date)
+  if (d < todayStart) return 'overdue'
+  if (d < addDays(todayStart, 1)) return 'today'
+  if (d < addDays(todayStart, 2)) return 'tomorrow'
+  if (d < addDays(todayStart, 7)) return 'week'
+  return 'later'
 }
 
 const statusLabel: Record<string, string> = {
@@ -76,6 +95,14 @@ export default function GorevlerClient({ initialTasks, projects }: Props) {
       return matchSearch && matchStatus && matchPriority
     })
   }, [tasks, search, filterStatus, filterPriority])
+
+  const grouped = useMemo(() => {
+    const todayStart = startOfDay(new Date())
+    const byDue = (x: Task, y: Task) => (x.due_date ?? '9999').localeCompare(y.due_date ?? '9999')
+    return BUCKETS
+      .map(bucket => ({ ...bucket, tasks: filtered.filter(t => bucketOf(t, todayStart) === bucket.key).sort(byDue) }))
+      .filter(g => g.tasks.length > 0)
+  }, [filtered])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -180,36 +207,23 @@ export default function GorevlerClient({ initialTasks, projects }: Props) {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="page-head">
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Görevler</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-            {stats.done}/{stats.total} tamamlandı
+          <h1 className="page-title">Görevler</h1>
+          <p className="page-sub">
+            {stats.total === 0 ? 'Henüz görev yok' : `${stats.total} görevden ${stats.done} tanesi tamamlandı`}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
+            className="btn"
+            aria-pressed={selectionMode}
             onClick={() => { setSelectionMode(!selectionMode); setSelectedIds(new Set()) }}
-            style={{
-              padding: '9px 14px', fontSize: 13, borderRadius: 8, cursor: 'pointer',
-              backgroundColor: selectionMode ? 'rgba(99,102,241,0.15)' : 'var(--bg-surface)',
-              color: selectionMode ? 'var(--accent)' : 'var(--text-secondary)',
-              border: `1px solid ${selectionMode ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`,
-            }}
           >
             {selectionMode ? 'İptal' : 'Seç'}
           </button>
-          <button
-            onClick={() => { setEditingTask(null); setShowModal(true) }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px',
-              backgroundColor: 'var(--accent)', color: 'white', border: 'none',
-              borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            <Plus size={16} />
-            <span>Yeni Görev</span>
-            <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 4 }}>(N)</span>
+          <button className="btn btn-primary" onClick={() => { setEditingTask(null); setShowModal(true) }}>
+            <Plus size={16} /> Yeni görev <span className="kbd">N</span>
           </button>
         </div>
       </div>
@@ -217,7 +231,7 @@ export default function GorevlerClient({ initialTasks, projects }: Props) {
       {/* Bulk Actions Bar */}
       {selectionMode && selectedIds.size > 0 && (
         <div className="card animate-fade-in" style={{ padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>{selectedIds.size} seçili</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-soft)' }}>{selectedIds.size} seçili</span>
           <button onClick={selectAll} style={{ fontSize: 13, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
             {selectedIds.size === filtered.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
           </button>
@@ -250,37 +264,26 @@ export default function GorevlerClient({ initialTasks, projects }: Props) {
         </div>
       )}
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
-        {[
-          { label: 'Yapılacak', value: stats.todo, color: '#6366F1' },
-          { label: 'Devam Eden', value: stats.inProgress, color: '#F59E0B' },
-          { label: 'Tamamlanan', value: stats.done, color: '#22C55E' },
-        ].map(s => (
-          <div key={s.label} className="card" style={{ padding: '12px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Search & Filter */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-          <input type="text" className="input" placeholder="Görev ara..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32 }} />
+      {/* Durum sekmeleri + arama */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="seg" role="group" aria-label="Duruma göre filtrele">
+          {[
+            { value: 'all', label: 'Tümü', count: stats.total },
+            { value: 'todo', label: 'Yapılacak', count: stats.todo },
+            { value: 'in_progress', label: 'Devam eden', count: stats.inProgress },
+            { value: 'done', label: 'Tamamlanan', count: stats.done },
+          ].map(o => (
+            <button key={o.value} aria-pressed={filterStatus === o.value} onClick={() => setFilterStatus(o.value)}>
+              {o.label} <span className="seg-count">{o.count}</span>
+            </button>
+          ))}
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-            backgroundColor: showFilters ? 'rgba(99,102,241,0.15)' : 'var(--bg-surface)',
-            border: `1px solid ${showFilters ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`,
-            color: showFilters ? 'var(--accent)' : 'var(--text-secondary)',
-            borderRadius: 6, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap',
-          }}
-        >
-          <Filter size={15} /> Filtrele
+        <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+          <input type="text" className="input" placeholder="Görev ara…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34, height: 40 }} />
+        </div>
+        <button className="btn" aria-pressed={showFilters || filterPriority !== 'all'} onClick={() => setShowFilters(!showFilters)}>
+          <Filter size={15} /> Öncelik
         </button>
       </div>
 
@@ -320,106 +323,110 @@ export default function GorevlerClient({ initialTasks, projects }: Props) {
 
       {/* Task List */}
       {filtered.length === 0 ? (
-        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
+        <div className="panel" style={{ padding: 48, textAlign: 'center', color: 'var(--text-secondary)' }}>
           <CheckCircle2 size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
-          <p style={{ fontSize: 15 }}>Görev bulunamadı.</p>
+          <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>Görev bulunamadı.</p>
           <p style={{ fontSize: 13, marginTop: 4 }}>Yeni bir görev ekleyin veya filtreleri değiştirin.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtered.map(task => {
-            const p = priorityConfig[task.priority]
-            const project = projects.find(pr => pr.id === task.project_id)
-            const isOverdue = task.due_date && task.status !== 'done' && new Date(task.due_date) < new Date()
-            const isSelected = selectedIds.has(task.id)
-            const justDone = recentlyDone.has(task.id)
-
-            return (
-              <div
-                key={task.id}
-                className={`card ${isSelected ? 'task-selected' : ''}`}
-                style={{
-                  padding: '14px 16px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  opacity: task.status === 'cancelled' ? 0.5 : 1,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onClick={() => {
-                  if (selectionMode) { toggleSelect(task.id) }
-                  else { setEditingTask(task); setShowModal(true) }
-                }}
-              >
-                {/* Selection Checkbox or Status Toggle */}
-                {selectionMode ? (
-                  <input
-                    type="checkbox"
-                    className="task-checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelect(task.id)}
-                    onClick={e => e.stopPropagation()}
-                    style={{ marginTop: 2 }}
-                  />
-                ) : (
-                  <button
-                    onClick={e => { e.stopPropagation(); toggleStatus(task) }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 1, flexShrink: 0 }}
-                  >
-                    {statusIcon[task.status]}
-                  </button>
-                )}
-
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                    <span
-                      className={justDone ? 'task-done' : ''}
-                      style={{
-                        fontSize: 14, fontWeight: 500, color: 'var(--text-primary)',
-                        textDecoration: task.status === 'done' && !justDone ? 'line-through' : 'none',
-                        opacity: task.status === 'done' ? 0.6 : 1,
-                        lineHeight: 1.4,
-                        display: 'inline-block',
-                      }}
-                    >
-                      {task.title}
-                    </span>
-                    {task.is_recurring && (
-                      <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>🔄</span>
-                    )}
-                  </div>
-                  {task.description && (
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.4 }}>
-                      {task.description.slice(0, 80)}{task.description.length > 80 ? '...' : ''}
-                    </p>
-                  )}
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 4, backgroundColor: p.bg, color: p.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {p.label}
-                    </span>
-                    {project && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: project.color, display: 'inline-block' }} />
-                        {project.name}
-                      </span>
-                    )}
-                    {task.due_date && (
-                      <span style={{ fontSize: 12, color: isOverdue ? 'var(--error)' : 'var(--text-secondary)', fontWeight: isOverdue ? 600 : 400 }}>
-                        {isOverdue ? '⚠ ' : ''}{format(new Date(task.due_date), 'd MMM', { locale: tr })}
-                      </span>
-                    )}
-                    {task.tags.length > 0 && task.tags.map(tag => (
-                      <span key={tag} style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, backgroundColor: 'var(--bg-surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+        <div className="panel">
+          {grouped.map((group, gi) => (
+            <section key={group.key} aria-label={group.label}>
+              <div className="group-title" style={{ paddingTop: gi === 0 ? 16 : 22 }}>
+                <span className="tick" style={{ background: group.color }} />
+                <b style={{ color: group.key === 'overdue' ? group.color : undefined }}>{group.label}</b>
+                <span className="num">{group.tasks.length}</span>
               </div>
-            )
-          })}
+              {group.tasks.map(task => {
+                const p = priorityConfig[task.priority]
+                const project = projects.find(pr => pr.id === task.project_id)
+                const isOverdue = group.key === 'overdue'
+                const isSelected = selectedIds.has(task.id)
+                const justDone = recentlyDone.has(task.id)
+                const done = task.status === 'done'
+
+                return (
+                  <div
+                    key={task.id}
+                    className={`row ${isSelected ? 'task-selected' : ''}`}
+                    style={{
+                      opacity: task.status === 'cancelled' ? 0.5 : 1,
+                      cursor: 'pointer',
+                      border: isSelected ? '1px solid var(--accent)' : undefined,
+                    }}
+                    onClick={() => {
+                      if (selectionMode) { toggleSelect(task.id) }
+                      else { setEditingTask(task); setShowModal(true) }
+                    }}
+                  >
+                    {selectionMode ? (
+                      <input
+                        type="checkbox"
+                        className="task-checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(task.id)}
+                        onClick={e => e.stopPropagation()}
+                        style={{ marginTop: 2 }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={done}
+                        aria-label={done ? 'Tamamlanmadı olarak işaretle' : 'Tamamlandı olarak işaretle'}
+                        title={statusLabel[task.status]}
+                        className={`check ${task.status === 'in_progress' ? 'is-progress' : ''}`}
+                        onClick={e => { e.stopPropagation(); toggleStatus(task) }}
+                      >
+                        <Check size={13} strokeWidth={3} />
+                      </button>
+                    )}
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span
+                        className={`row-title ${justDone ? 'task-done' : ''}`}
+                        style={{
+                          textDecoration: done && !justDone ? 'line-through' : 'none',
+                          opacity: done ? 0.5 : 1,
+                          display: 'inline-block',
+                        }}
+                      >
+                        {task.title}
+                      </span>
+                      {task.description && (
+                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.45 }}>
+                          {task.description.slice(0, 90)}{task.description.length > 90 ? '…' : ''}
+                        </p>
+                      )}
+                      <div className="row-meta">
+                        {project && (
+                          <span><span className="dot" style={{ backgroundColor: project.color }} />{project.name}</span>
+                        )}
+                        {task.status === 'in_progress' && <span style={{ color: '#FBBF24' }}>Devam ediyor</span>}
+                        {task.due_date && (
+                          <span style={{ color: isOverdue ? '#F87171' : undefined, fontWeight: isOverdue ? 600 : 400 }}>
+                            {format(new Date(task.due_date), 'd MMM EEE', { locale: tr })}
+                          </span>
+                        )}
+                        {task.is_recurring && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Repeat size={12} /> Tekrarlı</span>
+                        )}
+                        {task.tags.map(tag => <span key={tag}>#{tag}</span>)}
+                      </div>
+                    </div>
+
+                    {!done && (
+                      <span className="prio" style={{ color: p.color, display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <span style={{ width: 3, height: 12, borderRadius: 2, background: p.color }} />
+                        {p.label}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </section>
+          ))}
+          <div style={{ height: 6 }} />
         </div>
       )}
 

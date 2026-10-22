@@ -3,10 +3,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { Play, Square, Timer, Clock, Plus, X, Pencil, Trash2, AlertTriangle, History } from 'lucide-react'
+import { Square, Play, Plus, X, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { differenceInSeconds, startOfMonth, format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { Client, TimeEntry } from '@/types'
+import { notifyTimerChanged } from '@/hooks/useRunningTimer'
 
 interface Props {
   initialClients: Client[]
@@ -73,6 +74,7 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
       const withoutOldRunning = running ? prev.map(e => e.id === running.id ? { ...e, ended_at: new Date().toISOString() } : e) : prev
       return [data as TimeEntry, ...withoutOldRunning]
     })
+    notifyTimerChanged()
     toast.success('Başladı')
   }
 
@@ -82,6 +84,7 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
     const { error } = await supabase.from('time_entries').update({ ended_at: endedAt }).eq('id', running.id)
     if (error) { toast.error(`Durdurulamadı: ${error.message}`); return }
     setEntries(prev => prev.map(e => e.id === running.id ? { ...e, ended_at: endedAt } : e))
+    notifyTimerChanged()
     toast.success('Durduruldu')
   }
 
@@ -102,6 +105,7 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
     if (error) { toast.error(`Kaydedilemedi: ${error.message}`); return }
     setEntries(prev => prev.map(e => e.id === running.id ? { ...e, ended_at: endedAt } : e))
     setShowFixEnd(false)
+    notifyTimerChanged()
     toast.success(`${format(end, 'HH:mm')} itibarıyla durduruldu`)
   }
 
@@ -204,22 +208,34 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
   } as const
 
   return (
-    <div style={{ padding: '20px 16px 100px', maxWidth: 640, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-        <Timer size={22} color="var(--accent)" />
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Zaman Takibi</h1>
+    <div style={{ paddingBottom: 100 }}>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Zaman Takibi</h1>
+          <p className="page-sub">
+            {format(new Date(), 'MMMM', { locale: tr })} ayında toplam <b style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{formatDuration(totalMonthSeconds)}</b>
+          </p>
+        </div>
+        <button className="btn" onClick={() => setShowManual(true)}>
+          <Plus size={15} /> Elle saat ekle
+        </button>
       </div>
+
+      <div className="timer-grid">
+      <div>
 
       {/* Çalışıyor durumu */}
       {running && runningClient && (
         <div style={{
-          background: 'rgba(99,102,241,0.12)', border: '1px solid var(--accent)', borderRadius: 14,
-          padding: '16px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'linear-gradient(135deg, rgba(var(--accent-rgb),0.16), rgba(var(--accent-rgb),0.04) 60%)', border: '1px solid rgba(var(--accent-rgb),0.55)', borderRadius: 'var(--radius-lg)',
+          padding: '18px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Şu an çalışıyor</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span className="live-dot" aria-hidden /> Şu an çalışıyor
+            </div>
             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>{runningClient.name}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1, color: 'var(--text-primary)', marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>
               {String(Math.floor(runningSeconds / 3600)).padStart(2, '0')}:
               {String(Math.floor((runningSeconds % 3600) / 60)).padStart(2, '0')}:
               {String(runningSeconds % 60).padStart(2, '0')}
@@ -256,26 +272,36 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
         </div>
       )}
 
+      {!running && (
+        <div className="panel" style={{ padding: '22px 20px', marginBottom: 20 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Sayaç kapalı</div>
+          <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1, color: 'var(--border-strong)', marginTop: 6 }}>00:00:00</div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>Başlatmak için aşağıdan bir müşteri seç.</div>
+        </div>
+      )}
+
       {/* Müşteri butonları */}
-      <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10, fontWeight: 600 }}>
-        Müşteri seç {running ? '(değiştirmek için tıkla)' : ''}
+      <div className="group-title" style={{ padding: '0 0 10px' }}>
+        <b>Müşteriler</b> {running ? 'değiştirmek için dokun' : 'başlatmak için dokun'}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10, marginBottom: 28 }}>
         {clients.map(c => {
           const isRunning = running?.client_id === c.id
+          const monthSecs = monthlyTotals.find(t => t.client?.id === c.id)?.seconds ?? 0
           return (
             <button
               key={c.id}
               onClick={() => startTracking(c.id)}
-              style={{
-                background: isRunning ? 'var(--accent)' : 'var(--bg-card)',
-                border: `1px solid ${isRunning ? 'var(--accent)' : 'var(--border)'}`,
-                borderRadius: 12, padding: '14px 12px', textAlign: 'left', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}
+              aria-pressed={isRunning}
+              className="client-tile"
             >
-              {isRunning ? <Square size={15} fill="#fff" color="#fff" /> : <Play size={15} color="var(--text-secondary)" />}
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: isRunning ? '#fff' : 'var(--text-primary)' }}>{c.name}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                {isRunning ? <span className="live-dot" aria-hidden /> : <Play size={14} className="client-tile-play" />}
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+              </span>
+              <span className="num" style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 4, paddingLeft: 22 }}>
+                {monthSecs > 0 ? `Bu ay ${formatDuration(monthSecs)}` : 'Bu ay kayıt yok'}
+              </span>
             </button>
           )
         })}
@@ -286,17 +312,7 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
         )}
       </div>
 
-      <button
-        onClick={() => setShowManual(true)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6, background: 'none',
-          border: '1px dashed var(--border)', borderRadius: 10, padding: '10px 14px',
-          color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          marginBottom: 28, width: '100%', justifyContent: 'center',
-        }}
-      >
-        <Plus size={15} /> Elle Saat Ekle
-      </button>
+      </div>
 
       {/* Elle saat ekleme modal */}
       {showManual && (
@@ -401,7 +417,7 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
             </div>
             <input type="datetime-local" value={fixEndTime} onChange={e => setFixEndTime(e.target.value)} style={{ ...inputStyle, marginBottom: 10 }} />
             {fixEndTime && !isNaN(new Date(fixEndTime).getTime()) && new Date(fixEndTime) > new Date(running.started_at) && (
-              <div style={{ fontSize: 12.5, color: 'var(--accent)', marginBottom: 14, fontWeight: 600 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--accent-soft)', marginBottom: 14, fontWeight: 600 }}>
                 Kaydedilecek süre: {formatDuration(differenceInSeconds(new Date(fixEndTime), new Date(running.started_at)))}
               </div>
             )}
@@ -447,50 +463,50 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
         </>
       )}
 
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Bu ayın özeti */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <Clock size={15} color="var(--text-secondary)" />
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-          {format(new Date(), 'MMMM yyyy', { locale: tr })} — Toplam {formatDuration(totalMonthSeconds)}
-        </span>
-      </div>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-        {monthlyTotals.length === 0 && (
-          <div style={{ padding: 16, fontSize: 13, color: 'var(--text-secondary)' }}>Bu ay henüz kayıt yok.</div>
-        )}
-        {monthlyTotals.map(({ client, seconds }, i) => (
-          <div
-            key={client!.id}
-            style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '12px 16px', borderBottom: i < monthlyTotals.length - 1 ? '1px solid var(--border)' : 'none',
-            }}
-          >
-            <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{client!.name}</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>{formatDuration(seconds)}</span>
+      <section className="panel">
+        <div className="panel-head">
+          <h2 className="panel-title">{format(new Date(), 'MMMM', { locale: tr })} dağılımı</h2>
+          <span className="num" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{formatDuration(totalMonthSeconds)}</span>
+        </div>
+        {monthlyTotals.length === 0 ? (
+          <div className="panel-empty">Bu ay henüz kayıt yok.</div>
+        ) : (
+          <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {monthlyTotals.map(({ client, seconds }) => (
+              <div key={client!.id}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 6 }}>
+                  <span style={{ color: 'var(--text-primary)' }}>{client!.name}</span>
+                  <span className="num" style={{ color: 'var(--text-secondary)' }}>
+                    {formatDuration(seconds)} · %{Math.round((seconds / Math.max(totalMonthSeconds, 1)) * 100)}
+                  </span>
+                </div>
+                <div className="bar"><span style={{ width: `${(seconds / Math.max(totalMonthSeconds, 1)) * 100}%`, background: running?.client_id === client!.id ? 'var(--mark)' : 'var(--accent-soft)' }} /></div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+      </section>
 
       {/* Son kayıtlar — süre düzelt / sil */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '28px 0 10px' }}>
-        <History size={15} color="var(--text-secondary)" />
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Son kayıtlar — yanlış süreyi düzelt</span>
-      </div>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+      <section className="panel">
+        <div className="panel-head">
+          <h2 className="panel-title">Son kayıtlar</h2>
+          <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>Yanlış süreyi düzelt veya sil</span>
+        </div>
+      <div>
         {recentEntries.length === 0 && (
-          <div style={{ padding: 16, fontSize: 13, color: 'var(--text-secondary)' }}>Henüz tamamlanmış kayıt yok.</div>
+          <div className="panel-empty">Henüz tamamlanmış kayıt yok.</div>
         )}
-        {recentEntries.map((e, i) => {
+        {recentEntries.map(e => {
           const secs = Math.max(0, differenceInSeconds(new Date(e.ended_at!), new Date(e.started_at)))
           const long = secs >= LONG_RUN_SECONDS
           return (
             <div
               key={e.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
-                borderBottom: i < recentEntries.length - 1 ? '1px solid var(--border)' : 'none',
-              }}
+              className="row"
+              style={{ alignItems: 'center', gap: 10, padding: '10px 14px 10px 18px' }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -500,7 +516,7 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
                   {format(new Date(e.started_at), 'd MMM HH:mm', { locale: tr })} – {format(new Date(e.ended_at!), 'HH:mm')}
                 </div>
               </div>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: long ? 'var(--warning, #F59E0B)' : 'var(--accent)', whiteSpace: 'nowrap' }} title={long ? 'Uzun kayıt — açık mı kaldı?' : undefined}>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: long ? 'var(--warning, #F59E0B)' : 'var(--accent-soft)', whiteSpace: 'nowrap' }} title={long ? 'Uzun kayıt — açık mı kaldı?' : undefined}>
                 {long && '⚠ '}{formatDuration(secs)}
               </span>
               <button onClick={() => openEdit(e)} title="Süreyi düzelt" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}>
@@ -521,6 +537,9 @@ export default function ZamanTakibiClient({ initialClients, initialEntries }: Pr
             </div>
           )
         })}
+      </div>
+      </section>
+      </div>
       </div>
     </div>
   )

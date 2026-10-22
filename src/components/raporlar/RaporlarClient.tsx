@@ -29,7 +29,7 @@ interface Props {
 const priorityColors: Record<string, string> = { low: '#22C55E', medium: '#F59E0B', high: '#EF4444', urgent: '#DC2626' }
 const priorityLabels: Record<string, string> = { low: 'Düşük', medium: 'Orta', high: 'Yüksek', urgent: 'Acil' }
 const statusLabels: Record<string, string> = { todo: 'Yapılacak', in_progress: 'Devam Eden', done: 'Tamamlanan', cancelled: 'İptal' }
-const statusColors: Record<string, string> = { todo: '#F59E0B', in_progress: '#6366F1', done: '#22C55E', cancelled: '#6B7280' }
+const statusColors: Record<string, string> = { todo: '#F59E0B', in_progress: '#2280A3', done: '#22C55E', cancelled: '#6B7280' }
 
 const CATEGORY_COLORS: Record<string, string> = {
     'Kira': '#6366F1', 'Yazılım': '#8B5CF6', 'Donanım': '#3B82F6', 'Pazarlama': '#EC4899',
@@ -164,13 +164,13 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
     return (
         <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-                <BarChart3 size={24} color="var(--accent)" />
-                <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Raporlar & Analitik</h1>
+                <BarChart3 size={24} color="var(--accent-soft)" />
+                <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>Raporlar & Analitik</h1>
             </div>
 
             {/* ── Summary Cards ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
-                <SummaryCard icon={<Target size={20} color="#6366F1" />} label="Toplam Görev" value={String(taskStats.total)} accent="#6366F1" />
+                <SummaryCard icon={<Target size={20} color="#2280A3" />} label="Toplam Görev" value={String(taskStats.total)} accent="#2280A3" />
                 <SummaryCard icon={<CheckCircle2 size={20} color="#22C55E" />} label="Tamamlanan" value={`${taskStats.completionRate}%`} accent="#22C55E" />
                 <SummaryCard icon={<Wallet size={20} color="#F59E0B" />} label="Toplam Gelir" value={`₺${totalRevenue.toLocaleString('tr-TR')}`} accent="#F59E0B" />
                 <SummaryCard icon={<TrendingDown size={20} color="#EF4444" />} label="Toplam Gider" value={`₺${totalExpense.toLocaleString('tr-TR')}`} accent="#EF4444" />
@@ -208,7 +208,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
                             <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', width: '100%', justifyContent: 'center', height: 120 }}>
                                 {/* Revenue bar */}
                                 <div style={{ width: '42%', position: 'relative', height: `${(m.revenue / maxBar) * 100}%`, minHeight: m.revenue > 0 ? 4 : 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', borderRadius: '3px 3px 0 0', backgroundColor: 'rgba(99,102,241,0.2)' }} />
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', borderRadius: '3px 3px 0 0', backgroundColor: 'rgba(var(--accent-rgb),0.2)' }} />
                                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${m.revenue > 0 ? (m.revenuePaid / m.revenue) * 100 : 0}%`, borderRadius: '3px 3px 0 0', backgroundColor: '#22C55E' }} />
                                 </div>
                                 {/* Expense bar */}
@@ -220,7 +220,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
                 </div>
                 <div style={{ display: 'flex', gap: 16, marginTop: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                     <LegendDot color="#22C55E" label="Alınan Gelir" />
-                    <LegendDot color="rgba(99,102,241,0.4)" label="Toplam Gelir" />
+                    <LegendDot color="rgba(var(--accent-rgb),0.4)" label="Toplam Gelir" />
                     <LegendDot color="rgba(239,68,68,0.6)" label="Gider" />
                 </div>
             </div>
@@ -300,7 +300,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
                                             <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: p.color || 'var(--accent)', display: 'inline-block' }} />
                                             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{p.name}</span>
                                         </div>
-                                        <span style={{ fontSize: 12, fontWeight: 600, color: p.pct >= 100 ? '#22C55E' : 'var(--accent)' }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: p.pct >= 100 ? '#22C55E' : 'var(--accent-soft)' }}>
                                             {p.pct}% <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>({p.done}/{p.total})</span>
                                         </span>
                                     </div>
@@ -335,7 +335,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
                                             </div>
                                         </div>
                                         <div style={{ height: 6, backgroundColor: 'var(--bg-surface)', borderRadius: 3, overflow: 'hidden' }}>
-                                            <div style={{ height: '100%', borderRadius: 3, width: `${(c.total / maxClient) * 100}%`, background: `linear-gradient(90deg, #22C55E ${(c.paid / c.total) * 100}%, rgba(99,102,241,0.3) ${(c.paid / c.total) * 100}%)`, transition: 'width 0.8s ease' }} />
+                                            <div style={{ height: '100%', borderRadius: 3, width: `${(c.total / maxClient) * 100}%`, background: `linear-gradient(90deg, #22C55E ${(c.paid / c.total) * 100}%, rgba(var(--accent-rgb),0.3) ${(c.paid / c.total) * 100}%)`, transition: 'width 0.8s ease' }} />
                                         </div>
                                     </div>
                                 )

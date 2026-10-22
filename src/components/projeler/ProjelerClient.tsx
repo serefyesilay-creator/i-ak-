@@ -17,8 +17,8 @@ const statusLabels = {
 const statusColors = {
   active: '#22C55E',
   on_hold: '#F59E0B',
-  completed: '#6366F1',
-  archived: '#888',
+  completed: '#4FA3C4',
+  archived: '#9AA0AE',
 }
 
 interface TaskCount {
@@ -50,7 +50,7 @@ export default function ProjelerClient({ initialProjects, taskCounts }: Props) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Projeler</h1>
+        <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>Projeler</h1>
         <Link
           href="/projeler/yeni"
           style={{

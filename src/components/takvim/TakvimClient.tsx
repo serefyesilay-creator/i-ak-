@@ -169,7 +169,7 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Takvim</h1>
+        <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>Takvim</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           {/* View Toggle */}
           <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
@@ -179,8 +179,8 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
                 onClick={() => setViewMode(mode)}
                 style={{
                   padding: '6px 14px', fontSize: 13, cursor: 'pointer', border: 'none',
-                  backgroundColor: viewMode === mode ? 'rgba(99,102,241,0.15)' : 'var(--bg-surface)',
-                  color: viewMode === mode ? 'var(--accent)' : 'var(--text-secondary)',
+                  backgroundColor: viewMode === mode ? 'rgba(var(--accent-rgb),0.15)' : 'var(--bg-surface)',
+                  color: viewMode === mode ? 'var(--accent-soft)' : 'var(--text-secondary)',
                   fontWeight: viewMode === mode ? 600 : 400,
                 }}
               >
@@ -190,7 +190,7 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
           </div>
           <button
             onClick={() => setCurrentDate(new Date())}
-            style={{ fontSize: 13, color: 'var(--accent)', backgroundColor: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}
+            style={{ fontSize: 13, color: 'var(--accent-soft)', backgroundColor: 'rgba(var(--accent-rgb),0.1)', border: '1px solid rgba(var(--accent-rgb),0.2)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}
           >
             Bugün
           </button>
@@ -244,11 +244,11 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
                   border: isDragOver ? '2px dashed var(--accent)' : '2px solid transparent',
                   cursor: 'pointer',
                   backgroundColor: isDragOver
-                    ? 'rgba(99,102,241,0.15)'
+                    ? 'rgba(var(--accent-rgb),0.15)'
                     : isSelected
-                      ? 'rgba(99,102,241,0.2)'
+                      ? 'rgba(var(--accent-rgb),0.2)'
                       : isTodayDay
-                        ? 'rgba(99,102,241,0.1)'
+                        ? 'rgba(var(--accent-rgb),0.1)'
                         : 'transparent',
                   minHeight: viewMode === 'week' ? 80 : 56,
                   display: 'flex',
@@ -264,9 +264,9 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
                     fontSize: 13,
                     fontWeight: isTodayDay ? 700 : 400,
                     color: !isCurrentMonth
-                      ? '#444'
+                      ? 'var(--border-strong)'
                       : isSelected || isTodayDay
-                        ? 'var(--accent)'
+                        ? 'var(--accent-soft)'
                         : 'var(--text-primary)',
                     width: 24,
                     height: 24,
@@ -274,7 +274,7 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '50%',
-                    backgroundColor: isTodayDay ? 'rgba(99,102,241,0.15)' : 'transparent',
+                    backgroundColor: isTodayDay ? 'rgba(var(--accent-rgb),0.15)' : 'transparent',
                   }}
                 >
                   {format(day, 'd')}
@@ -289,7 +289,7 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
                     onDragEnd={handleDragEnd}
                     style={{
                       fontSize: 10, backgroundColor: `${priorityColors[t.priority] ?? 'var(--accent)'}22`,
-                      color: priorityColors[t.priority] ?? 'var(--accent)',
+                      color: priorityColors[t.priority] ?? 'var(--accent-soft)',
                       padding: '2px 5px', borderRadius: 3, width: '90%', textAlign: 'left',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       cursor: 'grab', display: 'flex', alignItems: 'center', gap: 2,
@@ -317,7 +317,7 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
         </div>
 
         {dragTaskId && (
-          <p style={{ textAlign: 'center', marginTop: 8, fontSize: 12, color: 'var(--accent)', opacity: 0.8 }}>
+          <p style={{ textAlign: 'center', marginTop: 8, fontSize: 12, color: 'var(--accent-soft)', opacity: 0.8 }}>
             📌 Görevi istediğiniz güne sürükleyip bırakın
           </p>
         )}
@@ -328,14 +328,14 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
         <div className="card animate-fade-in" style={{ padding: 20, marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CalendarDays size={18} color="var(--accent)" />
+              <CalendarDays size={18} color="var(--accent-soft)" />
               <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
                 {format(selectedDay, 'd MMMM yyyy, EEEE', { locale: tr })}
               </h3>
             </div>
             <button
               onClick={() => handleAddTask(selectedDay)}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', backgroundColor: 'rgba(99,102,241,0.12)', color: 'var(--accent)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', backgroundColor: 'rgba(var(--accent-rgb),0.12)', color: 'var(--accent-soft)', border: '1px solid rgba(var(--accent-rgb),0.2)', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}
             >
               <Plus size={14} /> Görev Ekle
             </button>
@@ -376,7 +376,7 @@ export default function TakvimClient({ tasks: initialTasks, milestones, projects
                     borderLeft: '3px solid var(--accent)',
                   }}
                 >
-                  <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>🏁 MİLESTONE</span>
+                  <span style={{ fontSize: 12, color: 'var(--accent-soft)', fontWeight: 600 }}>🏁 MİLESTONE</span>
                   <span style={{ fontSize: 14, color: 'var(--text-primary)', textDecoration: m.is_completed ? 'line-through' : 'none', opacity: m.is_completed ? 0.6 : 1 }}>
                     {m.title}
                   </span>

@@ -77,18 +77,18 @@ export default function LoginPage() {
             style={{
               width: 56,
               height: 56,
-              backgroundColor: 'rgba(99,102,241,0.15)',
+              backgroundColor: 'rgba(var(--accent-rgb),0.15)',
               borderRadius: 16,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 16px',
-              border: '1px solid rgba(99,102,241,0.3)',
+              border: '1px solid rgba(var(--accent-rgb),0.3)',
             }}
           >
-            <LogIn size={24} color="var(--accent)" />
+            <LogIn size={24} color="var(--accent-soft)" />
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-primary)', marginBottom: 6 }}>
             İş Akışı
           </h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
@@ -122,7 +122,7 @@ export default function LoginPage() {
               disabled={resetLoading}
               style={{
                 marginTop: 8, padding: '12px 24px',
-                backgroundColor: resetLoading ? '#4547a8' : 'var(--accent)',
+                backgroundColor: resetLoading ? 'var(--accent-strong)' : 'var(--accent)',
                 color: 'white', border: 'none', borderRadius: 8,
                 fontSize: 15, fontWeight: 600,
                 cursor: resetLoading ? 'not-allowed' : 'pointer',
@@ -136,7 +136,7 @@ export default function LoginPage() {
               onClick={() => setForgotMode(false)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                background: 'none', border: 'none', color: 'var(--accent)',
+                background: 'none', border: 'none', color: 'var(--accent-soft)',
                 fontSize: 14, cursor: 'pointer', padding: '8px',
               }}
             >
@@ -195,7 +195,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setForgotMode(true)}
-                style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--accent-soft)', fontSize: 13, cursor: 'pointer' }}
               >
                 Şifremi Unuttum
               </button>
@@ -206,7 +206,7 @@ export default function LoginPage() {
               disabled={loading}
               style={{
                 padding: '12px 24px',
-                backgroundColor: loading ? '#4547a8' : 'var(--accent)',
+                backgroundColor: loading ? 'var(--accent-strong)' : 'var(--accent)',
                 color: 'white', border: 'none', borderRadius: 8,
                 fontSize: 15, fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',

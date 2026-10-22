@@ -63,7 +63,7 @@ export default function YeniProjePage() {
         <ChevronLeft size={15} /> Projeler
       </Link>
 
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 24 }}>Yeni Proje</h1>
+      <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)', marginBottom: 24 }}>Yeni Proje</h1>
 
       <div className="card" style={{ padding: 28 }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

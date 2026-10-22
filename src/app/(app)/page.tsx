@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/dashboard/DashboardClient'
+import { startOfWeek } from 'date-fns'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -10,7 +11,9 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/auth/login')
 
-  const [tasksRes, projectsRes, invoicesRes, notesRes] = await Promise.all([
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString()
+
+  const [tasksRes, projectsRes, invoicesRes, notesRes, clientsRes, entriesRes] = await Promise.all([
     supabase
       .from('tasks')
       .select('*')
@@ -35,6 +38,12 @@ export default async function DashboardPage() {
       .eq('is_archived', false)
       .order('updated_at', { ascending: false })
       .limit(5),
+    supabase.from('clients').select('*').eq('user_id', user.id),
+    supabase
+      .from('time_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('started_at', weekStart),
   ])
 
   return (
@@ -44,6 +53,8 @@ export default async function DashboardPage() {
       activeProjects={projectsRes.data ?? []}
       pendingInvoices={invoicesRes.data ?? []}
       recentNotes={notesRes.data ?? []}
+      clients={clientsRes.data ?? []}
+      weekEntries={entriesRes.data ?? []}
     />
   )
 }

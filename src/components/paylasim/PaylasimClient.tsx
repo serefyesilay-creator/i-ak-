@@ -122,7 +122,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'planned':
-        return '#888888'
+        return '#9AA0AE'
       case 'ready':
         return '#F59E0B'
       case 'published':
@@ -130,7 +130,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
       case 'cancelled':
         return '#EF4444'
       default:
-        return '#888888'
+        return '#9AA0AE'
     }
   }
 
@@ -213,7 +213,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
       <div style={{ maxWidth: 1400, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+          <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)', marginBottom: 8 }}>
             Paylaşım Takvimi
           </h1>
         </div>
@@ -414,7 +414,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                   }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'
-                    ;(e.currentTarget as HTMLElement).style.color = 'var(--accent)'
+                    ;(e.currentTarget as HTMLElement).style.color = 'var(--accent-soft)'
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'

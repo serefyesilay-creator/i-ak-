@@ -96,7 +96,7 @@ export default function NotlarClient({ initialNotes, categories: initialCategori
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Notlar</h1>
+        <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>Notlar</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => setShowCatModal(true)}
@@ -166,7 +166,7 @@ export default function NotlarClient({ initialNotes, categories: initialCategori
         <div>
           {pinnedNotes.length > 0 && (
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>
                 📌 Sabitlenmiş
               </p>
               <NoteGrid notes={pinnedNotes} categories={categories} onEdit={n => { setEditingNote(n); setShowModal(true) }} onPin={togglePin} onArchive={archiveNote} onDelete={deleteNote} />
@@ -175,7 +175,7 @@ export default function NotlarClient({ initialNotes, categories: initialCategori
           {regularNotes.length > 0 && (
             <div>
               {pinnedNotes.length > 0 && (
-                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>
                   Diğer Notlar
                 </p>
               )}
@@ -278,7 +278,7 @@ function CategoryModal({ categories, onClose, onChange }: {
         {/* Existing Categories */}
         {categories.length > 0 && (
           <div style={{ marginBottom: 24 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Mevcut Kategoriler</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Mevcut Kategoriler</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {categories.map(cat => (
                 <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', backgroundColor: 'var(--bg-surface)', borderRadius: 8 }}>
@@ -316,7 +316,7 @@ function CategoryModal({ categories, onClose, onChange }: {
 
         {/* Add New */}
         <div>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Yeni Kategori</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>Yeni Kategori</p>
           <div style={{ marginBottom: 10 }}>
             <label style={ls}>Renk</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -399,7 +399,7 @@ function NoteGrid({ notes, categories, onEdit, onPin, onArchive, onDelete }: {
               </span>
               <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
                 <ActionBtn onClick={() => onPin(note)} title={note.is_pinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}>
-                  <Pin size={13} color={note.is_pinned ? 'var(--accent)' : 'var(--text-secondary)'} />
+                  <Pin size={13} color={note.is_pinned ? 'var(--accent-soft)' : 'var(--text-secondary)'} />
                 </ActionBtn>
                 <ActionBtn onClick={() => onArchive(note)} title="Arşivle">
                   <Archive size={13} color="var(--text-secondary)" />

@@ -168,7 +168,7 @@ export default function VarliklarClient({ initialAssets }: Props) {
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Varlıklar</h1>
+        <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>Varlıklar</h1>
         <button
           onClick={() => { setEditingId(null); setShowModal(true) }}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', backgroundColor: '#F59E0B', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
@@ -180,7 +180,7 @@ export default function VarliklarClient({ initialAssets }: Props) {
       {/* Toplam TL Kartı — her zaman görünür */}
       <div className="card" style={{ padding: '20px 24px', marginBottom: 20, background: 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.04) 100%)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Toplam Portföy Değeri</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 4 }}>Toplam Portföy Değeri</div>
           <div style={{ fontSize: 36, fontWeight: 800, color: '#F59E0B' }}>
             ₺{summary.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
           </div>
@@ -245,7 +245,7 @@ export default function VarliklarClient({ initialAssets }: Props) {
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
                     {['Varlık', 'Kategori', 'Miktar', 'Birim Fiyat', 'Toplam Değer', ''].map(h => (
-                      <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                      <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -301,7 +301,7 @@ export default function VarliklarClient({ initialAssets }: Props) {
 
             {/* Category Bar Chart */}
             <div className="card" style={{ padding: 20 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>Kategoriye Göre Dağılım</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 16 }}>Kategoriye Göre Dağılım</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {summary.byCat.map(([cat, val]) => {
                   const color = CAT_COLORS[cat] ?? '#6B7280'
@@ -332,7 +332,7 @@ export default function VarliklarClient({ initialAssets }: Props) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <BarChart3 size={16} color="#F59E0B" />
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Portföy Trendi</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>Portföy Trendi</p>
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   {([6, 12] as const).map(n => (
@@ -382,7 +382,7 @@ export default function VarliklarClient({ initialAssets }: Props) {
           {/* ── Duran Varlıklar ── */}
           {duranVarliklar.length > 0 && (
             <div className="card" style={{ padding: 20, borderLeft: '3px solid #D97706' }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 14 }}>
                 💎 Duran Varlıklar ({duranVarliklar.length})
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>

@@ -4,8 +4,8 @@
   "description": "Kişisel iş akışı yönetim uygulaması",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F0F0F",
-  "theme_color": "#0F0F0F",
+  "background_color": "#121317",
+  "theme_color": "#121317",
   "orientation": "portrait",
   "icons": [
     {

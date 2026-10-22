@@ -22,7 +22,7 @@ const currencySymbol: Record<string, string> = { TRY: '₺', USD: '$', EUR: '€
 
 const statusConfig = {
   unpaid:  { label: 'Bekliyor', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
-  partial: { label: 'Kısmi',    color: '#6366F1', bg: 'rgba(99,102,241,0.12)' },
+  partial: { label: 'Kısmi',    color: '#4FA3C4', bg: 'rgba(var(--accent-rgb),0.12)' },
   overdue: { label: 'Gecikmiş', color: '#EF4444', bg: 'rgba(239,68,68,0.12)'  },
   paid:    { label: 'Ödendi',   color: '#22C55E', bg: 'rgba(34,197,94,0.12)'  },
 }
@@ -152,7 +152,7 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Alacaklar</h1>
+        <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>Alacaklar</h1>
         <button
           onClick={() => setShowClientModal(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', backgroundColor: 'var(--accent)', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
@@ -217,7 +217,7 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
           {clientGroups.map(({ client, invoices: clientInvoices }) => (
             <div key={client.id} className="card" style={{ overflow: 'hidden' }}>
               <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border)' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: 'rgba(var(--accent-rgb),0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--accent-soft)', flexShrink: 0 }}>
                   {client.name[0].toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -226,7 +226,7 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
                 </div>
                 <button
                   onClick={() => setShowInvoiceModal(client.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', backgroundColor: 'rgba(99,102,241,0.12)', color: 'var(--accent)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', backgroundColor: 'rgba(var(--accent-rgb),0.12)', color: 'var(--accent-soft)', border: '1px solid rgba(var(--accent-rgb),0.2)', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
                 >
                   <Plus size={13} /> Fatura
                 </button>
@@ -252,7 +252,7 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
                         {inv.status === 'paid'
                           ? <CheckCircle2 size={22} color="#22C55E" />
                           : inv.status === 'partial'
-                          ? <Clock size={22} color="#6366F1" />
+                          ? <Clock size={22} color="#4FA3C4" />
                           : inv.status === 'overdue'
                           ? <Circle size={22} color="#EF4444" />
                           : <Circle size={22} color="#F59E0B" />}
@@ -317,7 +317,7 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
       {/* Clients with no invoices this month */}
       {clients.filter(c => !clientGroups.find(g => g.client.id === c.id)).length > 0 && (
         <div style={{ marginTop: 24 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>
             Bu Ay Faturası Olmayan Müşteriler
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -328,11 +328,11 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
                 className="card"
                 style={{ padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)', fontSize: 13 }}
               >
-                <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: 'rgba(var(--accent-rgb),0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--accent-soft)' }}>
                   {client.name[0].toUpperCase()}
                 </div>
                 <span style={{ color: 'var(--text-primary)' }}>{client.name}</span>
-                <Plus size={14} color="var(--accent)" />
+                <Plus size={14} color="var(--accent-soft)" />
               </button>
             ))}
           </div>
@@ -460,7 +460,7 @@ function PaymentModal({ invoice, onClose, onInvoiceUpdate }: {
                 / {sym}{total.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
               </span>
             </div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: progressPct === 100 ? '#22C55E' : 'var(--accent)' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: progressPct === 100 ? '#22C55E' : 'var(--accent-soft)' }}>
               {progressPct}%
             </span>
           </div>
@@ -477,7 +477,7 @@ function PaymentModal({ invoice, onClose, onInvoiceUpdate }: {
         {/* Add Payment */}
         {remaining > 0.01 && (
           <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Yeni Ödeme</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12, }}>Yeni Ödeme</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={ls}>Tutar ({invoice.currency})</label>
@@ -512,7 +512,7 @@ function PaymentModal({ invoice, onClose, onInvoiceUpdate }: {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
             <History size={14} color="var(--text-secondary)" />
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', }}>
               Ödeme Geçmişi
             </p>
           </div>

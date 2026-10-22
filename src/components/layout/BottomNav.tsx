@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRunningTimer, formatClock } from '@/hooks/useRunningTimer'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
@@ -19,7 +20,7 @@ import {
 
 // Alt barda doğrudan görünenler — 4'ten fazla olmamalı, yoksa telefonda taşar.
 const primaryItems = [
-  { href: '/', icon: LayoutDashboard, label: 'Ana Sayfa' },
+  { href: '/', icon: LayoutDashboard, label: 'Bugün' },
   { href: '/gorevler', icon: CheckSquare, label: 'Görevler' },
   { href: '/zaman-takibi', icon: Timer, label: 'Zaman' },
   { href: '/projeler', icon: FolderKanban, label: 'Projeler' },
@@ -41,25 +42,9 @@ function isPathActive(pathname: string, href: string) {
 export default function BottomNav() {
   const pathname = usePathname()
   const [moreOpen, setMoreOpen] = useState(false)
+  const { running, seconds } = useRunningTimer()
 
   const moreActive = moreItems.some(item => isPathActive(pathname, item.href))
-
-  const itemStyle = (active: boolean): React.CSSProperties => ({
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-    flex: 1,
-    minWidth: 0,
-    padding: '4px 2px',
-    textDecoration: 'none',
-    color: active ? 'var(--accent)' : 'var(--text-secondary)',
-    fontSize: 10,
-    fontWeight: active ? 600 : 400,
-    lineHeight: 1.1,
-    transition: 'color 0.15s ease',
-  })
 
   const labelStyle: React.CSSProperties = {
     maxWidth: '100%',
@@ -70,6 +55,14 @@ export default function BottomNav() {
 
   return (
     <>
+      {/* Çalışan sayaç: her sayfada görünür (sayaç sayfası hariç) */}
+      {running && !pathname.startsWith('/zaman-takibi') && !moreOpen && (
+        <Link href="/zaman-takibi" className="bnav-timer">
+          <span className="live-dot" aria-hidden />
+          <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>{running.clientName}</span>
+          <span className="clock">{formatClock(seconds)}</span>
+        </Link>
+      )}
       {/* "Diğer" açılır menüsü */}
       {moreOpen && (
         <>
@@ -78,7 +71,7 @@ export default function BottomNav() {
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.5)',
+              backgroundColor: 'rgba(8,9,12,0.6)',
               zIndex: 60,
             }}
           />
@@ -154,9 +147,9 @@ export default function BottomNav() {
                       textDecoration: 'none',
                       fontSize: 12,
                       fontWeight: active ? 600 : 400,
-                      color: active ? 'var(--accent)' : 'var(--text-secondary)',
-                      backgroundColor: active ? 'var(--bg-card)' : 'transparent',
-                      border: '1px solid var(--border)',
+                      color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      backgroundColor: active ? 'var(--bg-raised)' : 'var(--bg-card)',
+                      border: `1px solid ${active ? 'var(--mark)' : 'var(--border)'}`,
                     }}
                   >
                     <Icon size={22} />
@@ -175,18 +168,19 @@ export default function BottomNav() {
           bottom: 0,
           left: 0,
           right: 0,
-          backgroundColor: 'var(--bg-surface)',
+          backgroundColor: 'rgba(24,25,31,0.92)',
           borderTop: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'stretch',
           padding: '8px 4px env(safe-area-inset-bottom, 8px)',
+          backdropFilter: 'blur(12px)',
           zIndex: 50,
         }}
       >
         {primaryItems.map(({ href, icon: Icon, label }) => {
           const active = isPathActive(pathname, href)
           return (
-            <Link key={href} href={href} style={itemStyle(active)}>
+            <Link key={href} href={href} className="bnav-item" aria-current={active ? 'page' : undefined}>
               <Icon size={20} />
               <span style={labelStyle}>{label}</span>
             </Link>
@@ -196,13 +190,8 @@ export default function BottomNav() {
         <button
           onClick={() => setMoreOpen(true)}
           aria-label="Diğer sayfalar"
-          style={{
-            ...itemStyle(moreActive),
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
+          className="bnav-item"
+          aria-current={moreActive ? 'page' : undefined}
         >
           <MoreHorizontal size={20} />
           <span style={labelStyle}>Diğer</span>

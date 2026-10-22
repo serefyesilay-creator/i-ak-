@@ -125,7 +125,7 @@ export default function GiderlerClient({ initialExpenses }: Props) {
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Giderler</h1>
+        <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>Giderler</h1>
         <button
           onClick={() => setShowModal(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', backgroundColor: '#EF4444', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
@@ -205,7 +205,7 @@ export default function GiderlerClient({ initialExpenses }: Props) {
 
           {/* Expense List */}
           <div className="card" style={{ padding: 20 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 14 }}>
               Gider Listesi
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>

@@ -66,7 +66,7 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3, backgroundColor: `${priorityColors[task.priority]}20`, color: priorityColors[task.priority], textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3, backgroundColor: `${priorityColors[task.priority]}20`, color: priorityColors[task.priority], }}>
             {priorityLabels[task.priority]}
           </span>
           {task.due_date && (
@@ -145,7 +145,7 @@ function KanbanCol({
       </div>
 
       {/* Tasks */}
-      <div ref={setDropRef} style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', backgroundColor: isOver ? 'rgba(99,102,241,0.04)' : undefined, transition: 'background-color 0.15s', borderRadius: '0 0 12px 12px' }} className="scroll-ios">
+      <div ref={setDropRef} style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', backgroundColor: isOver ? 'rgba(var(--accent-rgb),0.04)' : undefined, transition: 'background-color 0.15s', borderRadius: '0 0 12px 12px' }} className="scroll-ios">
         {tasks.map(task => (
           <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
         ))}
@@ -386,7 +386,7 @@ export default function ProjeDetayClient({ project, initialColumns, initialTasks
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: project.color, flexShrink: 0 }} />
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{project.name}</h1>
+              <h1 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>{project.name}</h1>
             </div>
             {project.description && (
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, marginLeft: 24 }}>{project.description}</p>
@@ -396,9 +396,9 @@ export default function ProjeDetayClient({ project, initialColumns, initialTasks
             onClick={() => setShowMilestones(!showMilestones)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-              backgroundColor: showMilestones ? 'rgba(99,102,241,0.15)' : 'var(--bg-surface)',
-              border: `1px solid ${showMilestones ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`,
-              color: showMilestones ? 'var(--accent)' : 'var(--text-secondary)',
+              backgroundColor: showMilestones ? 'rgba(var(--accent-rgb),0.15)' : 'var(--bg-surface)',
+              border: `1px solid ${showMilestones ? 'rgba(var(--accent-rgb),0.3)' : 'var(--border)'}`,
+              color: showMilestones ? 'var(--accent-soft)' : 'var(--text-secondary)',
               borderRadius: 8, fontSize: 13, cursor: 'pointer',
             }}
           >
