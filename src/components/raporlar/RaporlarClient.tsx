@@ -48,7 +48,7 @@ const ASSET_EMOJI: Record<string, string> = {
 }
 
 export default function RaporlarClient({ tasks, projects, invoices, clients, expenses, assets, assetSnapshots }: Props) {
-    const now = new Date()
+    const [now] = useState(() => new Date())
     const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
 
     // ── Task Stats ──
@@ -62,7 +62,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
             return isBefore(new Date(t.due_date), now)
         }).length
         return { total, done, inProgress, todo, overdue, completionRate: total > 0 ? Math.round((done / total) * 100) : 0 }
-    }, [tasks])
+    }, [tasks, now])
 
     const priorityDist = useMemo(() => {
         const counts: Record<string, number> = { low: 0, medium: 0, high: 0, urgent: 0 }
@@ -90,7 +90,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
             months.push({ label: format(m, 'MMM', { locale: tr }), month: m, revenue, revenuePaid, expense })
         }
         return months
-    }, [invoices, expenses])
+    }, [invoices, expenses, now])
 
     const maxBar = Math.max(...monthly.map(m => Math.max(m.revenue, m.expense)), 1)
 
@@ -143,7 +143,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
             months.push({ label: format(m, 'MMM yy', { locale: tr }), value: latest?.total_value ?? 0, month: m })
         }
         return months
-    }, [assetSnapshots, trendMonths])
+    }, [assetSnapshots, trendMonths, now])
 
     const trendMax = Math.max(...trendData.map(d => d.value), 1)
 

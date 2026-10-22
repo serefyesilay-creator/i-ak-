@@ -47,10 +47,10 @@ function TiptapToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 }
 
 export default function NotModal({ note, categories, onClose, onSaved, onDelete }: Props) {
-  const [title, setTitle] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [tags, setTags] = useState('')
-  const [isPinned, setIsPinned] = useState(false)
+  const [title, setTitle] = useState(note?.title ?? '')
+  const [categoryId, setCategoryId] = useState(note?.category_id ?? '')
+  const [tags, setTags] = useState(note ? note.tags.join(', ') : '')
+  const [isPinned, setIsPinned] = useState(note?.is_pinned ?? false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
@@ -68,12 +68,18 @@ export default function NotModal({ note, categories, onClose, onSaved, onDelete 
     },
   })
 
+  // Not değişince alanları yeniden doldur (effect yerine render sırasında — React önerisi)
+  const [prevNote, setPrevNote] = useState(note)
+  if (prevNote !== note) {
+    setPrevNote(note)
+    setTitle(note?.title ?? '')
+    setCategoryId(note?.category_id ?? '')
+    setTags(note ? note.tags.join(', ') : '')
+    setIsPinned(note?.is_pinned ?? false)
+  }
+
   useEffect(() => {
     if (note) {
-      setTitle(note.title)
-      setCategoryId(note.category_id ?? '')
-      setTags(note.tags.join(', '))
-      setIsPinned(note.is_pinned)
       if (editor) {
         const content = typeof note.content === 'string' ? note.content : ''
         // If content looks like HTML, set it as HTML; otherwise set as text
@@ -84,7 +90,6 @@ export default function NotModal({ note, categories, onClose, onSaved, onDelete 
         }
       }
     } else {
-      setTitle(''); setCategoryId(''); setTags(''); setIsPinned(false)
       if (editor) editor.commands.setContent('')
     }
   }, [note, editor])

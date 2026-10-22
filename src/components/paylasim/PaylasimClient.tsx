@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRealtime } from '@/hooks/useRealtime'
 import toast from 'react-hot-toast'
-import type { Client, ContentShare } from '@/types'
+import type { Client, ContentShare, ContentShareStatus } from '@/types'
 import { format, getWeek, startOfYear, addWeeks, parse } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react'
@@ -554,7 +554,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData(p => ({ ...p, status: e.target.value as any }))}
+                  onChange={(e) => setFormData(p => ({ ...p, status: e.target.value as ContentShareStatus }))}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -626,7 +626,7 @@ export default function PaylasimClient({ initialClients, initialShares }: Props)
                   value={shareModal.date || shareModal.share?.share_date || ''}
                   onChange={(e) => {
                     if (shareModal.share) {
-                      setShareModal(p => ({ ...p, share: { ...p.share!, share_date: e.target.value } as any }))
+                      setShareModal(p => ({ ...p, share: p.share ? { ...p.share, share_date: e.target.value } : p.share }))
                     } else {
                       setShareModal(p => ({ ...p, date: e.target.value }))
                     }

@@ -16,7 +16,7 @@ export default async function ProjelerPage() {
     .order('created_at', { ascending: false })
 
   const projectIds = (projects ?? []).map(p => p.id)
-  let taskCounts: Record<string, { total: number; done: number }> = {}
+  const taskCounts: Record<string, { total: number; done: number }> = {}
 
   if (projectIds.length > 0) {
     const { data: tasks } = await supabase

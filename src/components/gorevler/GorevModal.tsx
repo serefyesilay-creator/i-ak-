@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { X, Trash2 } from 'lucide-react'
@@ -42,13 +42,8 @@ const defaultForm: FormState = {
 }
 
 export default function GorevModal({ task, projects, defaultColumnId, defaultProjectId, defaultDate, onClose, onSaved, onDelete }: Props) {
-  const [form, setForm] = useState<FormState>(defaultForm)
-  const [loading, setLoading] = useState(false)
-  const supabase = createClient()
-
-  useEffect(() => {
-    if (task) {
-      setForm({
+  const buildForm = (): FormState => task
+    ? {
         title: task.title,
         description: task.description ?? '',
         priority: task.priority,
@@ -58,11 +53,19 @@ export default function GorevModal({ task, projects, defaultColumnId, defaultPro
         tags: task.tags.join(', '),
         is_recurring: task.is_recurring,
         recurrence_type: task.recurrence_type ?? 'weekly',
-      })
-    } else {
-      setForm({ ...defaultForm, due_date: defaultDate ?? '', project_id: defaultProjectId ?? '' })
-    }
-  }, [task, defaultDate, defaultProjectId])
+      }
+    : { ...defaultForm, due_date: defaultDate ?? '', project_id: defaultProjectId ?? '' }
+
+  const [form, setForm] = useState<FormState>(buildForm)
+  const [loading, setLoading] = useState(false)
+  const supabase = createClient()
+
+  // Görev / varsayılanlar değişince formu yeniden doldur (effect yerine render sırasında — React önerisi)
+  const [prevDeps, setPrevDeps] = useState({ task, defaultDate, defaultProjectId })
+  if (prevDeps.task !== task || prevDeps.defaultDate !== defaultDate || prevDeps.defaultProjectId !== defaultProjectId) {
+    setPrevDeps({ task, defaultDate, defaultProjectId })
+    setForm(buildForm())
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
