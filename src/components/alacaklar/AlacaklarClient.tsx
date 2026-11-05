@@ -432,12 +432,16 @@ function PaymentModal({ invoice, onClose, onInvoiceUpdate, onPaidChange }: {
     if (parsed > remaining + 0.01) { toast.error(`Kalan: ${sym}${remaining.toLocaleString('tr-TR')}`); return }
     setSaving(true)
 
+    // payments tablosu user_id zorunlu tutuyor (RLS: auth.uid() = user_id)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Oturum bulunamadı, yeniden giriş yap'); setSaving(false); return }
+
     const { data, error } = await supabase
       .from('payments')
-      .insert({ invoice_id: invoice.id, amount: parsed, paid_at: paidAt, note: note || null })
+      .insert({ user_id: user.id, invoice_id: invoice.id, amount: parsed, paid_at: paidAt, note: note || null })
       .select().single()
 
-    if (error) { toast.error('Eklenemedi'); setSaving(false); return }
+    if (error) { toast.error('Eklenemedi: ' + error.message); setSaving(false); return }
 
     const newPayments = [data, ...payments]
     setPayments(newPayments)
