@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { format, subMonths, isSameMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { buildPaidMap, paidOf } from '@/lib/payments'
 
 interface TaskItem { id: string; title: string; status: string; priority: string; due_date: string | null; created_at: string; project_id: string | null }
 interface ProjectItem { id: string; name: string; color: string; status: string }
@@ -24,6 +25,7 @@ interface Props {
     expenses: ExpenseItem[]
     assets: AssetItem[]
     assetSnapshots: SnapshotItem[]
+    payments: { invoice_id: string; amount: number }[]
 }
 
 const priorityColors: Record<string, string> = { low: '#22C55E', medium: '#F59E0B', high: '#EF4444', urgent: '#DC2626' }
@@ -47,7 +49,8 @@ const ASSET_EMOJI: Record<string, string> = {
     'Gayrimenkul': '🏠', 'Tahvil': '📄', 'Duran Varlık': '💎', 'Diğer': '💼',
 }
 
-export default function RaporlarClient({ tasks, projects, invoices, clients, expenses, assets, assetSnapshots }: Props) {
+export default function RaporlarClient({ tasks, projects, invoices, clients, expenses, assets, assetSnapshots, payments }: Props) {
+    const paidMap = useMemo(() => buildPaidMap(payments), [payments])
     const [now] = useState(() => new Date())
     const [trendMonths, setTrendMonths] = useState<6 | 12>(6)
 
@@ -83,14 +86,14 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
             const m = startOfMonth(subMonths(now, i))
             const mInvoices = invoices.filter(inv => inv.due_date && isSameMonth(new Date(inv.due_date), m))
             const revenue = mInvoices.reduce((s, inv) => s + Number(inv.amount), 0)
-            const revenuePaid = mInvoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + Number(inv.amount), 0)
+            const revenuePaid = mInvoices.reduce((s, inv) => s + paidOf(inv, paidMap), 0)   // kısmi ödemeler dahil
             const expense = expenses
                 .filter(e => isSameMonth(new Date(e.expense_date), m))
                 .reduce((s, e) => s + Number(e.amount), 0)
             months.push({ label: format(m, 'MMM', { locale: tr }), month: m, revenue, revenuePaid, expense })
         }
         return months
-    }, [invoices, expenses, now])
+    }, [invoices, expenses, now, paidMap])
 
     const maxBar = Math.max(...monthly.map(m => Math.max(m.revenue, m.expense)), 1)
 
@@ -125,7 +128,7 @@ export default function RaporlarClient({ tasks, projects, invoices, clients, exp
     }, [expenses])
 
     const totalRevenue = invoices.reduce((s, inv) => s + Number(inv.amount), 0)
-    const paidRevenue = invoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + Number(inv.amount), 0)
+    const paidRevenue = invoices.reduce((s, inv) => s + paidOf(inv, paidMap), 0)
     const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
     const netBalance = paidRevenue - totalExpense
 

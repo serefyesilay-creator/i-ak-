@@ -23,11 +23,17 @@ export default async function RaporlarPage() {
         supabase.from('asset_snapshots').select('snapshot_date, total_value, breakdown').eq('user_id', user.id).gte('snapshot_date', since).order('snapshot_date', { ascending: true }),
     ])
 
+    const invoiceIds = (invoicesRes.data ?? []).map(i => i.id)
+    const paymentsRes = invoiceIds.length
+        ? await supabase.from('payments').select('invoice_id, amount').in('invoice_id', invoiceIds)
+        : { data: [] }
+
     return (
         <RaporlarClient
             tasks={tasksRes.data ?? []}
             projects={projectsRes.data ?? []}
             invoices={invoicesRes.data ?? []}
+            payments={paymentsRes.data ?? []}
             clients={clientsRes.data ?? []}
             expenses={expensesRes.data ?? []}
             assets={assetsRes.data ?? []}

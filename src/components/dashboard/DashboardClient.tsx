@@ -9,6 +9,8 @@ import toast from 'react-hot-toast'
 import type { Task, Project, Note, Invoice, Client, TimeEntry } from '@/types'
 import { useRealtime } from '@/hooks/useRealtime'
 import { createClient } from '@/lib/supabase/client'
+import { buildPaidMap, paidOf, remainingOf } from '@/lib/payments'
+import type { Payment } from '@/types'
 
 interface Props {
   userId: string
@@ -18,6 +20,7 @@ interface Props {
   recentNotes: Note[]
   clients: Client[]
   weekEntries: TimeEntry[]
+  payments: Pick<Payment, 'invoice_id' | 'amount'>[]
 }
 
 const priorityConfig: Record<Task['priority'], { label: string; color: string; loud: boolean }> = {
@@ -69,7 +72,9 @@ export default function DashboardClient({
   recentNotes: initialNotes,
   clients,
   weekEntries,
+  payments,
 }: Props) {
+  const paidMap = useMemo(() => buildPaidMap(payments), [payments])
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [projects, setProjects] = useState<Project[]>(initialProjects)
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices)
@@ -242,9 +247,10 @@ export default function DashboardClient({
 
   const invoiceTotals = useMemo(() => {
     const totals: Record<string, number> = {}
-    monthInvoices.forEach(inv => { totals[inv.currency] = (totals[inv.currency] ?? 0) + Number(inv.amount) })
+    // Kısmi ödenen faturada sadece kalan tutar bekleyen sayılır
+    monthInvoices.forEach(inv => { totals[inv.currency] = (totals[inv.currency] ?? 0) + remainingOf(inv, paidMap) })
     return Object.entries(totals).filter(([, v]) => v > 0)
-  }, [monthInvoices])
+  }, [monthInvoices, paidMap])
 
   const nextInvoices = useMemo(
     () => [...monthInvoices].sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999')).slice(0, 3),
@@ -473,7 +479,10 @@ export default function DashboardClient({
                           )}
                         </div>
                       </div>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{money(Number(inv.amount), inv.currency)}</span>
+                      <span className="num" style={{ textAlign: 'right', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {money(remainingOf(inv, paidMap), inv.currency)}
+                        {paidOf(inv, paidMap) > 0 && <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#22C55E' }}>{money(paidOf(inv, paidMap), inv.currency)} ödendi</span>}
+                      </span>
                     </div>
                   )
                 })}

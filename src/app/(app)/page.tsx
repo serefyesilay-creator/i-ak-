@@ -46,6 +46,11 @@ export default async function DashboardPage() {
       .gte('started_at', weekStart),
   ])
 
+  const pendingIds = (invoicesRes.data ?? []).map(i => i.id)
+  const paymentsRes = pendingIds.length
+    ? await supabase.from('payments').select('invoice_id, amount').in('invoice_id', pendingIds)
+    : { data: [] }
+
   return (
     <DashboardClient
       userId={user.id}
@@ -55,6 +60,7 @@ export default async function DashboardPage() {
       recentNotes={notesRes.data ?? []}
       clients={clientsRes.data ?? []}
       weekEntries={entriesRes.data ?? []}
+      payments={paymentsRes.data ?? []}
     />
   )
 }

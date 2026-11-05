@@ -13,11 +13,16 @@ export default async function AlacaklarPage() {
     supabase.from('clients').select('*').eq('user_id', user.id).order('name'),
     supabase.from('invoices').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
   ])
+  const invoiceIds = (invoicesRes.data ?? []).map(i => i.id)
+  const paymentsRes = invoiceIds.length
+    ? await supabase.from('payments').select('invoice_id, amount').in('invoice_id', invoiceIds)
+    : { data: [] }
 
   return (
     <AlacaklarClient
       initialClients={clientsRes.data ?? []}
       initialInvoices={invoicesRes.data ?? []}
+      initialPayments={paymentsRes.data ?? []}
     />
   )
 }

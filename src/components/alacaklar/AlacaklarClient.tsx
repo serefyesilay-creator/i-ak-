@@ -12,10 +12,12 @@ import { format, addMonths, subMonths, startOfMonth, isSameMonth } from 'date-fn
 import { tr } from 'date-fns/locale'
 import type { Client, Invoice, Payment } from '@/types'
 import NoteButton from '@/components/ui/NoteButton'
+import { buildPaidMap, paidOf, remainingOf, type PaidMap } from '@/lib/payments'
 
 interface Props {
   initialClients: Client[]
   initialInvoices: Invoice[]
+  initialPayments: Pick<Payment, 'invoice_id' | 'amount'>[]
 }
 
 const currencySymbol: Record<string, string> = { TRY: '₺', USD: '$', EUR: '€' }
@@ -27,9 +29,10 @@ const statusConfig = {
   paid:    { label: 'Ödendi',   color: '#22C55E', bg: 'rgba(34,197,94,0.12)'  },
 }
 
-export default function AlacaklarClient({ initialClients, initialInvoices }: Props) {
+export default function AlacaklarClient({ initialClients, initialInvoices, initialPayments }: Props) {
   const [clients, setClients] = useState<Client[]>(initialClients)
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices)
+  const [paidMap, setPaidMap] = useState<PaidMap>(() => buildPaidMap(initialPayments))
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
   const [showClientModal, setShowClientModal] = useState(false)
   const [showInvoiceModal, setShowInvoiceModal] = useState<string | null>(null)
@@ -68,13 +71,12 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
   const monthSummary = useMemo(() => {
     let total = 0, paid = 0, pending = 0
     monthInvoices.forEach(inv => {
-      const amount = Number(inv.amount)
-      total += amount
-      if (inv.status === 'paid') paid += amount
-      else pending += amount
+      total += Number(inv.amount)
+      paid += paidOf(inv, paidMap)       // kısmi ödemeler de "Alınan"a girer
+      pending += remainingOf(inv, paidMap)
     })
     return { total, paid, pending, count: monthInvoices.length }
-  }, [monthInvoices])
+  }, [monthInvoices, paidMap])
 
   const clientGroups = useMemo(() => {
     const groups: Record<string, { client: Client; invoices: Invoice[] }> = {}
@@ -88,11 +90,13 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
   }, [monthInvoices, clients])
 
   async function togglePaid(inv: Invoice) {
-    const nextStatus = inv.status === 'paid' ? 'unpaid' : 'paid'
+    // Kısmi ödemesi olan faturada daire ödeme penceresini açar (kalan tutar orada girilir)
+    if (inv.status !== 'paid' && (paidMap[inv.id] ?? 0) > 0) { setShowPaymentModal(inv); return }
+    const nextStatus = inv.status === 'paid' ? ((paidMap[inv.id] ?? 0) > 0 ? 'partial' : 'unpaid') : 'paid'
     const { error } = await supabase.from('invoices').update({ status: nextStatus }).eq('id', inv.id)
     if (error) { toast.error('Hata'); return }
     setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: nextStatus as Invoice['status'] } : i))
-    toast.success(nextStatus === 'paid' ? '✅ Ödeme alındı!' : 'Ödeme bekliyor olarak işaretlendi')
+    toast.success(nextStatus === 'paid' ? '✅ Ödeme alındı!' : nextStatus === 'partial' ? 'Kısmi ödemeye geri alındı' : 'Ödeme bekliyor olarak işaretlendi')
   }
 
   async function addClient(name: string, company: string) {
@@ -236,6 +240,9 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
                 {clientInvoices.map(inv => {
                   const sym = currencySymbol[inv.currency] ?? '₺'
                   const sc = statusConfig[inv.status] ?? statusConfig.unpaid
+                  const paid = paidOf(inv, paidMap), remaining = remainingOf(inv, paidMap)
+                  const isPartial = inv.status !== 'paid' && paid > 0 && remaining > 0
+                  const pct = Math.min(100, Math.round((paid / Number(inv.amount)) * 100))
                   return (
                     <div
                       key={inv.id}
@@ -277,24 +284,47 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
                               {format(new Date(inv.due_date), 'd MMM', { locale: tr })}
                             </span>
                           )}
+                          {isPartial && (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#22C55E' }}>
+                              {sym}{paid.toLocaleString('tr-TR', { minimumFractionDigits: 0 })} ödendi · %{pct}
+                            </span>
+                          )}
                         </div>
+                        {isPartial && (
+                          <div title={`${sym}${paid.toLocaleString('tr-TR')} / ${sym}${Number(inv.amount).toLocaleString('tr-TR')}`} style={{ height: 5, borderRadius: 3, backgroundColor: 'var(--border)', overflow: 'hidden', marginTop: 6, maxWidth: 260 }}>
+                            <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#22C55E', borderRadius: 3, transition: 'width 0.4s ease' }} />
+                          </div>
+                        )}
                       </div>
 
-                      {/* Amount */}
-                      <div style={{ fontSize: 15, fontWeight: 700, color: inv.status === 'paid' ? '#22C55E' : sc.color, whiteSpace: 'nowrap' }}>
-                        {sym}{Number(inv.amount).toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
-                      </div>
+                      {/* Amount — kısmi ödemede kalan tutar öne çıkar */}
+                      {isPartial ? (
+                        <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: '#F59E0B' }}>
+                            {sym}{remaining.toLocaleString('tr-TR', { minimumFractionDigits: 0 })} <span style={{ fontSize: 11, fontWeight: 600 }}>kaldı</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                            toplam {sym}{Number(inv.amount).toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 15, fontWeight: 700, color: inv.status === 'paid' ? '#22C55E' : sc.color, whiteSpace: 'nowrap' }}>
+                          {sym}{Number(inv.amount).toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+                        </div>
+                      )}
 
                       {/* Not */}
                       <NoteButton note={inv.notes} onSave={n => updateInvoiceNote(inv.id, n)} showWhenEmpty={hoverInvId === inv.id} />
 
-                      {/* Payment Button */}
+                      {/* Payment Button — kısmi ya da tam ödeme gir */}
                       <button
                         onClick={() => setShowPaymentModal(inv)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, opacity: 0.6 }}
-                        title="Ödeme takibi"
+                        style={inv.status === 'paid'
+                          ? { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, opacity: 0.6 }
+                          : { display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', backgroundColor: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        title={inv.status === 'paid' ? 'Ödeme geçmişi' : 'Kısmi ya da tam ödeme ekle'}
                       >
-                        <CreditCard size={15} />
+                        <CreditCard size={inv.status === 'paid' ? 15 : 13} />{inv.status !== 'paid' && 'Ödeme al'}
                       </button>
 
                       {/* Delete */}
@@ -355,6 +385,7 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
           invoice={showPaymentModal}
           onClose={() => setShowPaymentModal(null)}
           onInvoiceUpdate={updateInvoiceLocal}
+          onPaidChange={(id, sum) => setPaidMap(prev => ({ ...prev, [id]: sum }))}
         />
       )}
     </div>
@@ -363,10 +394,11 @@ export default function AlacaklarClient({ initialClients, initialInvoices }: Pro
 
 // ─── Payment Modal ────────────────────────────────────────────────────────────
 
-function PaymentModal({ invoice, onClose, onInvoiceUpdate }: {
+function PaymentModal({ invoice, onClose, onInvoiceUpdate, onPaidChange }: {
   invoice: Invoice
   onClose: () => void
   onInvoiceUpdate: (inv: Invoice) => void
+  onPaidChange: (invoiceId: string, paidSum: number) => void
 }) {
   const supabase = createClient()
   const [payments, setPayments] = useState<Payment[]>([])
@@ -417,8 +449,9 @@ function PaymentModal({ invoice, onClose, onInvoiceUpdate }: {
     const newStatus: Invoice['status'] = newPaid >= total - 0.01 ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid'
     await supabase.from('invoices').update({ status: newStatus }).eq('id', invoice.id)
     onInvoiceUpdate({ ...invoice, status: newStatus })
+    onPaidChange(invoice.id, newPaid)
 
-    toast.success('Ödeme eklendi')
+    toast.success(newStatus === 'paid' ? '✅ Ödeme tamamlandı' : `Ödeme eklendi · kalan ${sym}${(total - newPaid).toLocaleString('tr-TR')}`)
     setSaving(false)
   }
 
@@ -431,6 +464,7 @@ function PaymentModal({ invoice, onClose, onInvoiceUpdate }: {
     const newStatus: Invoice['status'] = newPaid >= total - 0.01 ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid'
     await supabase.from('invoices').update({ status: newStatus }).eq('id', invoice.id)
     onInvoiceUpdate({ ...invoice, status: newStatus })
+    onPaidChange(invoice.id, newPaid)
     toast.success('Ödeme silindi')
   }
 
@@ -480,7 +514,12 @@ function PaymentModal({ invoice, onClose, onInvoiceUpdate }: {
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12, }}>Yeni Ödeme</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
-                <label style={ls}>Tutar ({invoice.currency})</label>
+                <label style={{ ...ls, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Tutar ({invoice.currency})</span>
+                  <button type="button" onClick={() => setAmount(String(Math.round(remaining * 100) / 100))} style={{ background: 'none', border: 'none', color: '#22C55E', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                    Kalanın tamamı
+                  </button>
+                </label>
                 <input
                   className="input"
                   placeholder={`${sym}${remaining.toLocaleString('tr-TR')}`}
